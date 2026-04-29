@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "qmlsurvey_version": "0.1.0",
+  "experiment_group": "phase1-shot-noise",
+  "task": "parity",
+  "seed": 0,
+  "n_qubits": 4,
+  "n_layers": 2,
+  "epochs": 30,
+  "lr": 0.05,
+  "n_trials": 10,
+  "reference": {
+    "backend": "default.qubit",
+    "shots": null,
+    "final_test_acc": 1.0,
+    "final_loss": 0.030082568526268005,
+    "wall_time_s": 1.0639781000063522
+  },
+  "cells": [
+    {
+      "backend": "default.qubit",
+      "shots": null,
+      "n_trials": 10,
+      "acc_mean": 1.0,
+      "acc_std": 0.0,
+      "acc_min": 1.0,
+      "acc_max": 1.0,
+      "trials": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "trial_seconds_mean": 0.01432939000223996
+    },
+    {
+      "backend": "default.qubit",
+      "shots": 5000,
+      "error": "ValueError: probabilities do not sum to 1",
+      "trials": []
+    },
+    {
+      "backend": "default.qubit",
+      "shots": 1000,
+      "error": "ValueError: probabilities do not sum to 1",
+      "trials": []
+    },
+    {
+      "backend": "default.qubit",
+      "shots": 500,
+      "error": "ValueError: probabilities do not sum to 1",
+      "trials": []
+    },
+    {
+      "backend": "default.qubit",
+      "shots": 100,
+      "error": "ValueError: probabilities do not sum to 1",
+      "trials": []
+    },
+    {
+      "backend": "braket.local.qubit",
+      "shots": 5000,
+      "n_trials": 10,
+      "acc_mean": 1.0,
+      "acc_std": 0.0,
+      "acc_min": 1.0,
+      "acc_max": 1.0,
+      "trials": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "trial_seconds_mean": 2.0463779600031557
+    },
+    {
+      "backend": "braket.local.qubit",
+      "shots": 1000,
+      "n_trials": 10,
+      "acc_mean": 1.0,
+      "acc_std": 0.0,
+      "acc_min": 1.0,
+      "acc_max": 1.0,
+      "trials": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "trial_seconds_mean": 1.4234284200021647
+    },
+    {
+      "backend": "braket.local.qubit",
+      "shots": 500,
+      "n_trials": 10,
+      "acc_mean": 1.0,
+      "acc_std": 0.0,
+      "acc_min": 1.0,
+      "acc_max": 1.0,
+      "trials": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "trial_seconds_mean": 1.3468095099975472
+    },
+    {
+      "backend": "braket.local.qubit",
+      "shots": 100,
+      "n_trials": 10,
+      "acc_mean": 0.9980769217014313,
+      "acc_std": 0.006081307542318498,
+      "acc_min": 0.9807692170143127,
+      "acc_max": 1.0,
+      "trials": [
+        1.0,
+        1.0,
+        1.0,
+        0.9807692170143127,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "trial_seconds_mean": 1.2888587000008556
+    }
+  ],
+  "environment": {
+    "packages": {
+      "pennylane": "0.42.3",
+      "pennylane-lightning": "0.42.0",
+      "torch": "2.11.0",
+      "numpy": "2.2.6",
+      "scikit-learn": "1.7.2",
+      "amazon-braket-sdk": "1.110.1",
+      "amazon-braket-pennylane-plugin": "1.33.7"
+    }
+  }
+}

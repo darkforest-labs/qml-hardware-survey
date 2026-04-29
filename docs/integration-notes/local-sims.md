@@ -70,6 +70,46 @@ bug. Options if we want `braket.local.qubit` coverage in later phases:
 
 For now the matrix is honest about the gap rather than working around it.
 
+## Shot-noise sweep (option 1: inference-only on `braket.local.qubit`)
+
+`scripts/run_phase1_shot_noise.py` trains the reference parity model once
+on `default.qubit` analytic, then evaluates the trained `state_dict` on the
+parity test set at multiple shot counts on each backend that accepts
+forward inference (10 independent shot draws per cell). Recorded in
+`results/phase1/shot_noise/parity_shot_noise.json`.
+
+| Backend              | Shots   | Mean acc | Std    | Min    | Max    | Notes                  |
+|----------------------|---------|---------:|-------:|-------:|-------:|------------------------|
+| `default.qubit`      | analytic| 1.0000   | 0.0000 | 1.000  | 1.000  | reference              |
+| `default.qubit`      | 5000    | —        | —      | —      | —      | failed (see below)     |
+| `default.qubit`      | 1000    | —        | —      | —      | —      | failed                 |
+| `default.qubit`      | 500     | —        | —      | —      | —      | failed                 |
+| `default.qubit`      | 100     | —        | —      | —      | —      | failed                 |
+| `braket.local.qubit` | 5000    | 1.0000   | 0.0000 | 1.000  | 1.000  | option 1 works         |
+| `braket.local.qubit` | 1000    | 1.0000   | 0.0000 | 1.000  | 1.000  | option 1 works         |
+| `braket.local.qubit` | 500     | 1.0000   | 0.0000 | 1.000  | 1.000  | option 1 works         |
+| `braket.local.qubit` | 100     | 0.9981   | 0.0061 | 0.981  | 1.000  | first deviation        |
+
+Two integration findings:
+
+1. **Option 1 is viable.** `braket.local.qubit` runs forward-only on
+   broadcasted batches without hitting PL #4462, because gradients are
+   never invoked. The backend is reachable for shot-noise / inference work
+   on weights trained elsewhere; what it cannot currently do is train.
+2. **`default.qubit` + `interface="torch"` + broadcasting + finite shots
+   raises `ValueError: probabilities do not sum to 1`.** The shot sampler
+   in `pennylane/devices/qubit/sampling.py::_sample_probs_numpy` enforces
+   exact sum-to-one and the torch-side probabilities drift outside that
+   tolerance under broadcasting. This is a second real integration block
+   surfaced by the survey. The matrix above leaves those cells dashed
+   rather than masking the failure.
+
+The parity model used here is small and trains to a clean separation, so
+shot noise barely registers even at 100 shots — only one trial out of ten
+showed a single misclassified test point. Tasks with smaller margins
+(planned for later phases) should produce more discriminating shot-noise
+data.
+
 ## Reproducing
 
 ```powershell
@@ -78,4 +118,5 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .[dev,braket]
 python scripts/run_phase1_matrix.py
+python scripts/run_phase1_shot_noise.py
 ```
