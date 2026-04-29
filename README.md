@@ -1,0 +1,64 @@
+# qml-hardware-survey
+
+A systematic survey of what it takes to interface a small ML model with each
+real quantum computing backend reachable from a laptop. Outcomes and integration
+techniques, side-by-side with classical baselines.
+
+## What this is
+
+- **One small hybrid model** (PennyLane + PyTorch), unchanged across backends.
+- **One swap point**: `backends.get(name)` returns a PennyLane device.
+- **Three toy tasks** with clear classical baselines: parity, two-moons, PCA-MNIST 0/1.
+- **One result format** (`RunRecord` JSON) committed to `results/` per run.
+- **One rollup notebook** that turns those JSONs into a comparison table.
+
+## What this is NOT
+
+- Not a claim that quantum ML is better than classical. It almost certainly isn't
+  at this scale. Every quantum result is reported next to a parameter-matched
+  classical baseline.
+- Not a framework. ~600 LOC total target.
+- Not a benchmark suite — it's a survey of **integration friction** and
+  **observed outcomes** on tiny problems.
+
+## Backends covered
+
+| Backend | Cost | Status |
+|---|---|---|
+| `default.qubit` (PennyLane local) | free | working |
+| `braket.local.qubit` (Braket local sim) | free | working |
+| `braket.aws.qubit` → SV1 | ~$0.075/min | gated by `--max-cost-usd` |
+| `braket.aws.qubit` → IonQ Aria | ~$0.03/shot + $0.30/task | gated, manual confirm |
+| `braket.aws.qubit` → Rigetti Ankaa-3 | ~$0.0009/shot + $0.30/task | gated, manual confirm |
+| `braket.aws.qubit` → IQM Garnet | ~$0.00145/shot + $0.30/task | gated, manual confirm |
+
+## Hard rules
+
+1. Every QPU run requires `--max-cost-usd N` and an interactive `confirm` prompt.
+2. Every quantum run is paired with a same-parameter-count classical baseline in
+   the same `RunRecord`. The table tells the truth.
+3. No "AI-powered" anything. Device picking is a 40-line weighted rubric.
+4. Quantum forward pass uses PennyLane broadcasting, not a Python `for` loop.
+
+## Quickstart
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -e .[dev]
+
+# Free local run
+python -m qmlsurvey.runner --backend default.qubit --task parity --epochs 30
+
+# Cloud sim (will prompt to confirm cost)
+python -m qmlsurvey.runner --backend sv1 --task moons --epochs 20 --max-cost-usd 1.00
+
+# Real QPU (will prompt twice)
+python -m qmlsurvey.runner --backend ionq_aria_1 --task parity --epochs 1 --shots 200 --max-cost-usd 5.00
+```
+
+## Layout
+
+See [pyproject.toml](pyproject.toml) for deps. Code lives in `src/qmlsurvey/`,
+per-backend integration notes live in `docs/integration-notes/`, every run
+writes a JSON to `results/`.
