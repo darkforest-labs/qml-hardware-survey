@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "qmlsurvey_version": "0.1.0",
+  "timestamp_utc": "2026-04-29T19:43:40+00:00",
+  "backend": "lightning.qubit",
+  "backend_kind": "local_sim",
+  "task": "mnist_pca",
+  "n_qubits": 4,
+  "n_layers": 2,
+  "shots": null,
+  "epochs": 30,
+  "learning_rate": 0.05,
+  "seed": 0,
+  "estimated_cost_usd": 0.0,
+  "quantum": {
+    "final_train_acc": 0.996874988079071,
+    "final_test_acc": 1.0,
+    "best_test_acc": 1.0,
+    "final_loss": 0.047948140650987625,
+    "epochs": 30,
+    "wall_time_s": 33.09473430000071,
+    "queue_wait_s": 0.0,
+    "device_runtime_s": 0.0
+  },
+  "classical_baseline": {
+    "final_train_acc": 0.9937499761581421,
+    "final_test_acc": 1.0,
+    "best_test_acc": 1.0,
+    "final_loss": 0.026228424161672592,
+    "epochs": 30,
+    "wall_time_s": 0.0205565999931423,
+    "queue_wait_s": 0.0,
+    "device_runtime_s": 0.0
+  },
+  "quantum_total_params": 54,
+  "classical_total_params": 51,
+  "experiment_group": "phase1-cross-sim",
+  "notes": "Phase-1 cross-sim sweep on lightning.qubit.",
+  "environment": {
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "packages": {
+      "pennylane": "0.42.3",
+      "pennylane-lightning": "0.42.0",
+      "torch": "2.11.0",
+      "numpy": "2.2.6",
+      "scikit-learn": "1.7.2",
+      "amazon-braket-sdk": "1.110.1",
+      "amazon-braket-pennylane-plugin": "1.33.7"
+    }
+  }
+}

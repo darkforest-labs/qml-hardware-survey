@@ -28,11 +28,11 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 
 **Goal:** know what the model can and cannot do *before* hardware noise enters.
 
-- [ ] Run reference config on **all three local sims** (`default.qubit`, `lightning.qubit`, `braket.local.qubit`) × all three tasks = 9 records. Same seed.
-- [ ] Sanity check: `default.qubit` and `lightning.qubit` should agree to numerical noise; `braket.local.qubit` (with finite shots) should agree within shot-noise CIs. Document any disagreement.
+- [x] Run reference config on **all three local sims** (`default.qubit`, `lightning.qubit`, `braket.local.qubit`) × all three tasks = 9 records. Same seed. *(6/9 done; `braket.local.qubit` blocked by PL #4462 — broadcasted parameter-shift gradients unsupported. Documented in `docs/integration-notes/local-sims.md`.)*
+- [x] Sanity check: `default.qubit` and `lightning.qubit` should agree to numerical noise; `braket.local.qubit` (with finite shots) should agree within shot-noise CIs. Document any disagreement. *(default.qubit ≡ lightning.qubit to 6 decimals on all three tasks; lightning ≈23–33× slower at 4 qubits; braket gap noted above.)*
 - [ ] **Shot-noise sweep** on one task (parity is cheapest): shots ∈ {100, 500, 1000, 5000, analytic}. Plot accuracy vs shots. This is the calibration curve we'll need to interpret QPU runs.
 - [ ] **Trainability check**: gradient variance vs `n_qubits` ∈ {2, 4, 6, 8} and `n_layers` ∈ {1, 2, 4}. Flag barren-plateau territory before paying for it on a QPU.
-- [ ] First rollup: a `notebooks/rollup.ipynb` (or `scripts/rollup.py` if you prefer CLI) that ingests `results/*.json` into a single dataframe and emits `results/SUMMARY.md`.
+- [ ] First rollup: `scripts/rollup.py` ingests `results/**/*.json` into a single dataframe and emits `results/SUMMARY.md`.
 
 **Exit:** rollup table shows the three local sims agreeing on the reference config; shot-noise curve documented in `docs/integration-notes/local-sims.md`.
 
