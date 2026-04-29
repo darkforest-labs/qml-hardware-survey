@@ -1,6 +1,7 @@
 """Smoke tests. Local simulators only — no AWS calls."""
 from __future__ import annotations
 
+import pytest
 import torch
 
 from qmlsurvey.backends import get_device
@@ -8,6 +9,8 @@ from qmlsurvey.baselines import MatchedMLP
 from qmlsurvey.catalog import CATALOG, estimate_cost_usd
 from qmlsurvey.model import HybridModel
 from qmlsurvey.tasks import TASKS
+
+LOCAL_SIM_BACKENDS = ["default.qubit", "lightning.qubit"]
 
 
 def test_catalog_keys_present():
@@ -35,6 +38,16 @@ def test_hybrid_model_forward_and_backprop():
     loss.backward()
     assert model.quantum_weights.grad is not None
     assert model.quantum_weights.grad.abs().sum().item() > 0
+
+
+@pytest.mark.parametrize("backend", LOCAL_SIM_BACKENDS)
+def test_local_sim_backends_run_forward(backend: str):
+    # lightning.qubit has stricter requirements; this confirms it is wired up.
+    dev = get_device(backend, wires=4, shots=None)
+    model = HybridModel(in_features=4, out_features=2, n_qubits=4, n_layers=2, device=dev)
+    x = torch.randn(4, 4)
+    out = model(x)
+    assert out.shape == (4, 2)
 
 
 def test_parity_task_loads():

@@ -9,6 +9,7 @@ Hard guards:
 from __future__ import annotations
 
 import argparse
+import importlib.metadata as importlib_metadata
 import json
 import platform
 import sys
@@ -21,7 +22,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from . import __version__
+from . import RUNRECORD_SCHEMA_VERSION, __version__
 from .backends import describe, get_device
 from .baselines import MatchedMLP
 from .catalog import estimate_cost_usd
@@ -40,10 +41,34 @@ class TrainStats:
     final_loss: float
     epochs: int
     wall_time_s: float
+    queue_wait_s: float = 0.0
+    device_runtime_s: float = 0.0
+
+
+_TRACKED_PACKAGES = (
+    "pennylane",
+    "pennylane-lightning",
+    "torch",
+    "numpy",
+    "scikit-learn",
+    "amazon-braket-sdk",
+    "amazon-braket-pennylane-plugin",
+)
+
+
+def _collect_package_versions() -> dict[str, str]:
+    versions: dict[str, str] = {}
+    for pkg in _TRACKED_PACKAGES:
+        try:
+            versions[pkg] = importlib_metadata.version(pkg)
+        except importlib_metadata.PackageNotFoundError:
+            versions[pkg] = "not-installed"
+    return versions
 
 
 @dataclass
 class RunRecord:
+    schema_version: int
     qmlsurvey_version: str
     timestamp_utc: str
     backend: str
@@ -60,6 +85,7 @@ class RunRecord:
     classical_baseline: TrainStats
     quantum_total_params: int
     classical_total_params: int
+    experiment_group: str = ""
     notes: str = ""
     environment: dict[str, Any] = field(default_factory=dict)
 
@@ -146,6 +172,8 @@ def run(
     max_cost_usd: float = 0.0,
     assume_yes: bool = False,
     notes: str = "",
+    experiment_group: str = "",
+    out_dir: Path | None = None,
 ) -> RunRecord:
     if task not in TASKS:
         raise SystemExit(f"Unknown task {task!r}. Available: {sorted(TASKS)}")
@@ -180,6 +208,7 @@ def run(
     )
 
     record = RunRecord(
+        schema_version=RUNRECORD_SCHEMA_VERSION,
         qmlsurvey_version=__version__,
         timestamp_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         backend=backend,
@@ -196,14 +225,19 @@ def run(
         classical_baseline=cstats,
         quantum_total_params=qmodel.n_total_params,
         classical_total_params=cmodel.n_total_params,
+        experiment_group=experiment_group,
         notes=notes,
         environment={
             "python": sys.version.split()[0],
             "platform": platform.platform(),
+            "packages": _collect_package_versions(),
         },
     )
-    out = record.write()
-    print(f"Wrote {out.relative_to(REPO_ROOT)}")
+    out = record.write(out_dir=out_dir or RESULTS_DIR)
+    try:
+        print(f"Wrote {out.relative_to(REPO_ROOT)}")
+    except ValueError:
+        print(f"Wrote {out}")
     return record
 
 
@@ -220,6 +254,13 @@ def main() -> None:
     p.add_argument("--max-cost-usd", type=float, default=0.0)
     p.add_argument("--yes", action="store_true", help="Skip interactive confirmation.")
     p.add_argument("--notes", default="")
+    p.add_argument("--experiment-group", default="", help="Optional tag to group related runs.")
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Override output dir (default: results/).",
+    )
     args = p.parse_args()
     run(
         backend=args.backend,
@@ -233,6 +274,8 @@ def main() -> None:
         max_cost_usd=args.max_cost_usd,
         assume_yes=args.yes,
         notes=args.notes,
+        experiment_group=args.experiment_group,
+        out_dir=args.out_dir,
     )
 
 

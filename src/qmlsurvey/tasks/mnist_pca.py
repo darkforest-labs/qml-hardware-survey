@@ -12,7 +12,8 @@ NAME = "mnist_pca"
 
 
 def load(seed: int = 0, n_components: int = 4, n_per_class: int = 200):
-    mnist = fetch_openml("mnist_784", version=1, as_frame=False, parser="auto")
+    # `parser="liac-arff"` avoids the pandas dependency (we only need numpy here).
+    mnist = fetch_openml("mnist_784", version=1, as_frame=False, parser="liac-arff")
     X_all, y_all = mnist.data, mnist.target.astype(int)
     mask = (y_all == 0) | (y_all == 1)
     X_all, y_all = X_all[mask], y_all[mask]

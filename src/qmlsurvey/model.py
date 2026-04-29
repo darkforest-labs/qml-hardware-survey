@@ -76,6 +76,8 @@ class HybridModel(nn.Module):
         out = self._circuit(encoded, self.quantum_weights)
         if isinstance(out, (list, tuple)):
             out = torch.stack(out, dim=-1)
+        # PennyLane expvals come back as float64; align with the rest of the model.
+        out = out.to(dtype=encoded.dtype)
         return self.decoder(out)
 
     @property

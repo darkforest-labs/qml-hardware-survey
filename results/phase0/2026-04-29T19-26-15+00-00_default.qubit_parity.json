@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "qmlsurvey_version": "0.1.0",
+  "timestamp_utc": "2026-04-29T19:26:15+00:00",
+  "backend": "default.qubit",
+  "backend_kind": "local_sim",
+  "task": "parity",
+  "n_qubits": 4,
+  "n_layers": 2,
+  "shots": null,
+  "epochs": 30,
+  "learning_rate": 0.05,
+  "seed": 0,
+  "estimated_cost_usd": 0.0,
+  "quantum": {
+    "final_train_acc": 1.0,
+    "final_test_acc": 1.0,
+    "best_test_acc": 1.0,
+    "final_loss": 0.030082568526268005,
+    "epochs": 30,
+    "wall_time_s": 0.9502087000000756,
+    "queue_wait_s": 0.0,
+    "device_runtime_s": 0.0
+  },
+  "classical_baseline": {
+    "final_train_acc": 0.6666666865348816,
+    "final_test_acc": 0.6730769276618958,
+    "best_test_acc": 0.7115384340286255,
+    "final_loss": 0.6797589063644409,
+    "epochs": 30,
+    "wall_time_s": 0.022107299999333918,
+    "queue_wait_s": 0.0,
+    "device_runtime_s": 0.0
+  },
+  "quantum_total_params": 54,
+  "classical_total_params": 51,
+  "experiment_group": "phase0-reference",
+  "notes": "Phase-0 reference run.",
+  "environment": {
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "packages": {
+      "pennylane": "0.42.3",
+      "pennylane-lightning": "0.42.0",
+      "torch": "2.11.0",
+      "numpy": "2.2.6",
+      "scikit-learn": "1.7.2",
+      "amazon-braket-sdk": "not-installed",
+      "amazon-braket-pennylane-plugin": "not-installed"
+    }
+  }
+}

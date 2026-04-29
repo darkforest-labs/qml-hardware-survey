@@ -57,8 +57,28 @@ python -m qmlsurvey.runner --backend sv1 --task moons --epochs 20 --max-cost-usd
 python -m qmlsurvey.runner --backend ionq_aria_1 --task parity --epochs 1 --shots 200 --max-cost-usd 5.00
 ```
 
+## Reference configuration
+
+Cross-backend comparisons use a single fixed configuration per task so that
+runs differ only in the backend. Don't change these casually — changing them
+invalidates the existing comparison set.
+
+| Task | `n_qubits` | `n_layers` | `epochs` | `lr` | `seed` |
+|---|---|---|---|---|---|
+| `parity` | 4 | 2 | 30 | 0.05 | 0 |
+| `moons` | 4 | 2 | 30 | 0.05 | 0 |
+| `mnist_pca` | 4 | 2 | 30 | 0.05 | 0 |
+
+Phase-0 reference results (one per task on `default.qubit`) live in
+`results/phase0/`. Regenerate them with:
+
+```powershell
+python scripts/run_phase0.py
+```
+
 ## Layout
 
 See [pyproject.toml](pyproject.toml) for deps. Code lives in `src/qmlsurvey/`,
 per-backend integration notes live in `docs/integration-notes/`, every run
-writes a JSON to `results/`.
+writes a JSON to `results/`. The `RunRecord` schema is versioned via
+`qmlsurvey.RUNRECORD_SCHEMA_VERSION` (currently `1`).

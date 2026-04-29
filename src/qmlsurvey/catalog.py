@@ -9,7 +9,7 @@ Update as AWS changes pricing or device availability.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 DeviceKind = Literal["local_sim", "cloud_sim", "qpu"]
