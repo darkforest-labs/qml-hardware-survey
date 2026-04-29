@@ -32,9 +32,9 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 - [x] Sanity check: `default.qubit` and `lightning.qubit` should agree to numerical noise; `braket.local.qubit` (with finite shots) should agree within shot-noise CIs. Document any disagreement. *(default.qubit ≡ lightning.qubit to 6 decimals on all three tasks; lightning ≈23–33× slower at 4 qubits; braket gap noted above.)*
 - [x] **Shot-noise sweep** on one task (parity is cheapest): shots ∈ {100, 500, 1000, 5000, analytic}. Plot accuracy vs shots. This is the calibration curve we'll need to interpret QPU runs. *(`scripts/run_phase1_shot_noise.py` + option-1 inference path. `braket.local.qubit` reachable for forward-only at all shot counts; parity model saturates accuracy except 1/10 trials at 100 shots. `default.qubit` torch interface + broadcasting + finite shots blocks on `_sample_probs_numpy` "probabilities do not sum to 1" — second integration finding logged in `docs/integration-notes/local-sims.md`.)*
 - [x] **Trainability check**: gradient variance vs `n_qubits` ∈ {2, 4, 6, 8, 10, 12} × `n_layers` ∈ {1, 2, 4, 8}, 200 inits/cell on `default.qubit`. Result: `grad_var_mean` falls ~3.5 orders of magnitude across the grid (1.7e-3 → 5.1e-7); width dominates depth; reference `(4, 2)` cell is three orders of magnitude above the `(12, 4)` corner. See `docs/integration-notes/local-sims.md`.
-- [ ] First rollup: `scripts/rollup.py` ingests `results/**/*.json` into a single dataframe and emits `results/SUMMARY.md`.
+- [x] First rollup: `scripts/rollup.py` ingests `results/**/*.json` and emits `results/SUMMARY.md`. *(Stdlib-only, schema-aware: dispatches on `experiment_group` for phase0-reference, phase1-cross-sim, phase1-shot-noise, phase1-trainability; per-cell trainability files skipped silently; unknown groups surfaced.)*
 
-**Exit:** rollup table shows the three local sims agreeing on the reference config; shot-noise curve documented in `docs/integration-notes/local-sims.md`.
+**Exit:** rollup table shows the three local sims agreeing on the reference config; shot-noise + trainability sweeps documented in `docs/integration-notes/local-sims.md`; `results/SUMMARY.md` regenerable from `python scripts/rollup.py`.
 
 ---
 
