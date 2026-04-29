@@ -110,6 +110,52 @@ showed a single misclassified test point. Tasks with smaller margins
 (planned for later phases) should produce more discriminating shot-noise
 data.
 
+## Trainability / gradient-variance sweep
+
+`scripts/run_phase1_trainability.py` sweeps a (`n_qubits`, `n_layers`) grid
+on `default.qubit` (analytic, backprop). For each cell it draws
+`N_INITS = 200` independent random initialisations of `quantum_weights`
+from `Uniform[-π, π]` (the canonical barren-plateau prescription),
+holding the encoder, decoder, and a fixed batch (`BATCH = 32`) constant
+per cell. For each init it does one forward + backward of cross-entropy
+loss and records `Var` across inits of every quantum-weight gradient
+component. Recorded in `results/phase1/trainability/`.
+
+Mean over parameter components of `Var(∂loss/∂θ)` across the 200 inits:
+
+| `n_qubits` \\ `n_layers` |        1 |        2 |        4 |        8 |
+|------------------------:|---------:|---------:|---------:|---------:|
+|                       2 | 1.74e-03 | 1.83e-04 | 7.14e-05 | 2.85e-06 |
+|                       4 | 1.14e-04 | 6.56e-05 | 1.81e-04 | 3.84e-04 |
+|                       6 | 2.88e-05 | 3.24e-05 | 2.28e-05 | 5.65e-05 |
+|                       8 | 3.03e-05 | 6.98e-06 | 5.54e-06 | 1.15e-05 |
+|                      10 | 1.59e-05 | 1.54e-06 | 1.33e-06 | 1.73e-06 |
+|                      12 | 9.49e-06 | 2.29e-06 | 5.08e-07 | 5.86e-07 |
+
+Three integration observations:
+
+1. **Width dominates depth in this circuit.** Holding `n_layers` fixed,
+   `grad_var_mean` falls roughly two to three orders of magnitude as
+   `n_qubits` goes from 2 → 12 — consistent with the published
+   ~`O(2^-n)` barren-plateau scaling for hardware-efficient ansätze with
+   Pauli-Z readouts. Holding `n_qubits` fixed, depth has a weaker and
+   non-monotonic effect (visible in the `n_qubits=4` row, where 8 layers
+   actually has higher variance than 1 layer).
+2. **The reference config sits at the top of the usable band.** The
+   project's reference cell `(n_qubits=4, n_layers=2)` posts
+   `grad_var_mean ≈ 6.6e-05`, three orders of magnitude above the
+   `(12, 4)` corner at `5.1e-07`. Anything past `n_qubits ≈ 10` with
+   `n_layers ≥ 2` is in territory where vanilla gradient training will
+   need either smarter initialisation or a different objective.
+3. **Wall time is tractable.** The full 24-cell × 200-init sweep ran in
+   5.7 minutes on `default.qubit`; the worst cell `(12, 8)` cost
+   ~338 ms / init.
+
+Caveats: this is one circuit family (`HybridModel`'s
+`Rot + linear-CNOT-chain` ansatz) on one synthetic batch with one
+init distribution. The numbers above describe **this** circuit's
+trainability curve, not "barren plateaus in general".
+
 ## Reproducing
 
 ```powershell
@@ -119,4 +165,5 @@ python -m venv .venv
 pip install -e .[dev,braket]
 python scripts/run_phase1_matrix.py
 python scripts/run_phase1_shot_noise.py
+python scripts/run_phase1_trainability.py
 ```

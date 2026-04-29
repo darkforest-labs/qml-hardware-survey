@@ -1,0 +1,15 @@
+{
+  "n_qubits": 10,
+  "n_layers": 1,
+  "n_qparams": 30,
+  "n_inits": 200,
+  "batch": 32,
+  "backend": "default.qubit",
+  "grad_var_mean": 1.5864947607968896e-05,
+  "grad_var_max": 0.00014699327428315884,
+  "grad_var_first": 4.3927527179029436e-05,
+  "grad_abs_mean": 0.0014465505893105051,
+  "grad_abs_max": 0.037757787853479385,
+  "wall_time_s": 9.376747400005115,
+  "seconds_per_init": 0.04688373700002558
+}
