@@ -41,7 +41,7 @@ def _make_record() -> RunRecord:
 
 
 def test_schema_version_pinned():
-    assert RUNRECORD_SCHEMA_VERSION == 1
+    assert RUNRECORD_SCHEMA_VERSION == 2
 
 
 def test_record_round_trips_through_json(tmp_path: Path):

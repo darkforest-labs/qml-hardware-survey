@@ -81,4 +81,10 @@ python scripts/run_phase0.py
 See [pyproject.toml](pyproject.toml) for deps. Code lives in `src/qmlsurvey/`,
 per-backend integration notes live in `docs/integration-notes/`, every run
 writes a JSON to `results/`. The `RunRecord` schema is versioned via
-`qmlsurvey.RUNRECORD_SCHEMA_VERSION` (currently `1`).
+`qmlsurvey.RUNRECORD_SCHEMA_VERSION` (currently `2`). v2 is additive over v1
+and adds per-epoch trace, test-set predictions, circuit fingerprint, init
+hashes, and git / hardware / billing metadata.
+
+`scripts/build_hf_dataset.py` flattens `results/**/*.json` into JSONL splits
+(`runs` / `epochs` / `predictions`) under `datasets/qml-hardware-survey/data/`
+for publishing to Hugging Face. It accepts both v1 and v2 records.
