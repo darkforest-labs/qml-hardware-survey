@@ -42,13 +42,13 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 
 **Goal:** de-risk every non-quantum failure mode (auth, region, quota, plugin install) on the cheapest possible cloud target.
 
-- [ ] Document AWS setup in `docs/integration-notes/aws-setup.md`: account, region enable, S3 results bucket, IAM policy, `aws configure sso` or access keys, Braket service activation.
-- [ ] Add a `qmlsurvey doctor` subcommand (or `scripts/doctor.py`) that checks: boto3 importable, plugin importable, Braket-visible devices, S3 bucket writable, current AWS region. Run before *any* paid call.
-- [ ] **First paid call**: 1 epoch of parity on **`sv1`** (cheapest cloud sim, $0.075/min) with `--shots 100 --max-cost-usd 0.50`. Goal is "the call returned a JSON," not accuracy.
-- [ ] One full reference-config run on `sv1` for each of the three tasks. Record actual billed cost vs estimate in the integration note.
-- [ ] One run on `dm1` with a deliberately injected noise model — substrate for predicting what QPUs will do.
+- [x] Document AWS setup in `docs/integration-notes/aws-setup.md`: account, region enable, S3 results bucket, IAM policy, `aws configure sso` or access keys, Braket service activation. *(Corrected 2026-06: the results bucket name must start with `amazon-braket-`.)*
+- [x] Add a `qmlsurvey doctor` subcommand (or `scripts/doctor.py`) that checks: boto3 importable, plugin importable, Braket-visible devices, S3 bucket writable, current AWS region. Run before *any* paid call. *(All checks PASS against a live account; see `aws-setup.md` §8.)*
+- [~] **First paid call**: ~~1 epoch of parity on **`sv1`**~~ — done as a **forward/inference-only** call (2 inputs, shots=100), because *training* on `sv1` hits the same PL #4462 broadcasted-parameter-shift block as `braket.local.qubit` (the plugin has no adjoint support). Call returned a JSON; billed $0.0075 (2 tasks × 3 s minimum) vs $0.00375 estimated. See `docs/integration-notes/sv1.md`.
+- [ ] ~~One full reference-config run on `sv1` for each of the three tasks.~~ **Blocked by PL #4462** — cloud-sim *training* is not reachable on the current stack, only inference. Re-scope to "forward trained-elsewhere weights on `sv1`" (Phase-3 pattern) or wait for a PennyLane with the fix.
+- [ ] One run on `dm1` with a deliberately injected noise model — substrate for predicting what QPUs will do. *(Forward-only; same #4462 constraint applies to training.)*
 
-**Exit:** `docs/integration-notes/sv1.md` and `dm1.md` populated with billed-vs-estimated table; `doctor` script committed.
+**Exit:** `docs/integration-notes/sv1.md` populated with billed-vs-estimated table ✅; `dm1.md` pending; `doctor` script committed ✅. **Phase-2 spend so far: $0.0075 of the $1.00 cap.**
 
 **Hard cap:** $1 cumulative across this phase. If exceeded, stop and inspect the cost model in `catalog.estimate_cost_usd` — its `estimated_runtime_minutes=0.05` default is almost certainly wrong for real workloads.
 

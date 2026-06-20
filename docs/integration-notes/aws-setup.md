@@ -12,8 +12,11 @@
   fee on cloud sims.
 - **Phase-2 cap**: \$1 cumulative across all calls.
 - The cost estimator in `qmlsurvey.catalog.estimate_cost_usd` defaults to
-  `estimated_runtime_minutes=0.05` (3 s). For real workloads this is almost
-  certainly an under-estimate; revisit it once we have one real billed run.
+  `estimated_runtime_minutes=0.05` (3 s). The first real billed run (`sv1.md`,
+  2026-06-20) confirmed it under-estimates: it models a *single* 3 s task and
+  ignores task count, but each broadcast input becomes its own task floored at
+  the 3 s minimum, so real cost ≈ `N_tasks × $0.00375`. Fix the estimator to
+  take an explicit task count; never raise the cap to compensate.
 
 ## 1. AWS account + region
 
@@ -40,8 +43,14 @@
 Braket writes task results to S3. Create one bucket dedicated to this
 project so cleanup and cost attribution are trivial.
 
+> **The bucket name MUST start with `amazon-braket-`.** The Braket
+> service-linked role only grants S3 access to `amazon-braket-*` buckets; any
+> other name is rejected at `CreateQuantumTask` with
+> `ValidationException: ... does not start with 'amazon-braket-'`. Verified the
+> hard way in `sv1.md` (2026-06-20).
+
 ```powershell
-$bucket = "qmlsurvey-results-<your-account-suffix>"
+$bucket = "amazon-braket-qmlsurvey-<your-account-id>"
 aws s3api create-bucket `
     --bucket $bucket `
     --region us-east-1
@@ -77,8 +86,8 @@ Two acceptable shapes; pick one.
       "Effect": "Allow",
       "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket", "s3:DeleteObject"],
       "Resource": [
-        "arn:aws:s3:::qmlsurvey-results-<suffix>",
-        "arn:aws:s3:::qmlsurvey-results-<suffix>/*"
+        "arn:aws:s3:::amazon-braket-qmlsurvey-<account-id>",
+        "arn:aws:s3:::amazon-braket-qmlsurvey-<account-id>/*"
       ]
     }
   ]
