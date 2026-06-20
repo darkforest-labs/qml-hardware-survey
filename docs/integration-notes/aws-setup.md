@@ -20,8 +20,8 @@
 - Use an existing AWS account or create one at <https://aws.amazon.com/>.
 - Pick **one** active region for Phase 2. Recommended: `us-east-1` — it
   hosts both `sv1` and `dm1` and is the IonQ region (relevant later).
-  - Rigetti devices live in `us-west-1`.
-  - IQM Garnet lives in `eu-north-1`.
+  - Rigetti devices (Cepheus-1-108Q) live in `us-west-1`.
+  - IQM (Garnet, Emerald) and AQT Ibex-Q1 live in `eu-north-1`.
 - Cloud simulators (`sv1`, `dm1`, `tn1`) are listed as `region="all"` in
   the catalog because Braket exposes them in every Braket-enabled region;
   pick whichever region matches your S3 bucket to avoid cross-region data
@@ -136,3 +136,44 @@ Before invoking anything against `sv1` or `dm1`:
    read (running tally in `sv1.md` once that note exists).
 4. The call uses `shots <= 1000` and a single epoch unless explicitly
    noted otherwise.
+
+## 8. Live preflight result — 2026-06-19
+
+`python scripts/doctor.py` was run against a real account (read-only, no paid
+call). All required checks `[PASS]`:
+
+```
+[PASS] boto3 import: boto3 1.42.97
+[PASS] amazon-braket-sdk import: version 1.110.1
+[PASS] amazon-braket-pennylane-plugin import: ok
+[PASS] AWS credentials: resolved via shared-credentials-file
+[PASS] AWS region: us-east-1
+[PASS] Braket devices visible: 10 devices in this region
+[SKIP] S3 bucket writable: skipped (set QMLSURVEY_S3_BUCKET to enable)
+```
+
+A direct `aws braket search-devices` across the three regions the catalog
+targets returned the following live status — this is the authoritative
+source that drove the 2026-06 catalog refresh:
+
+| Region | Device | Provider | Status |
+|--------|--------|----------|--------|
+| us-east-1 | SV1 / DM1 / TN1 | Amazon Braket | ONLINE |
+| us-east-1 | Forte Enterprise 1 | IonQ | ONLINE |
+| us-east-1 | Forte 1 | IonQ | OFFLINE |
+| us-east-1 | Aria 1 / Aria 2 / Harmony | IonQ | RETIRED |
+| us-east-1 | Aquila | QuEra | ONLINE (neutral-atom; out of scope) |
+| us-west-1 | Cepheus-1-108Q | Rigetti | ONLINE |
+| us-west-1 | Ankaa-3 / Ankaa-2 / Aspen-* | Rigetti | RETIRED |
+| eu-north-1 | Garnet / Emerald | IQM | ONLINE |
+| eu-north-1 | IBEX Q1 | AQT | ONLINE |
+
+Two integration findings worth carrying into Phase 2/3:
+
+1. **IonQ Forte-1 was OFFLINE at snapshot time** while Forte-Enterprise-1 was
+   ONLINE. If a Phase-3 IonQ run is wanted before Forte-1 returns, target
+   `.../qpu/ionq/Forte-Enterprise-1` instead. QPU `OFFLINE` is a transient
+   maintenance state, distinct from `RETIRED`.
+2. **The S3 results bucket is not yet provisioned** (`QMLSURVEY_S3_BUCKET`
+   unset → that check SKIPs). Braket QPU/cloud-sim tasks write results to S3,
+   so before the first paid call create the bucket per §3 and export the var.

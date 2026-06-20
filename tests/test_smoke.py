@@ -14,13 +14,13 @@ LOCAL_SIM_BACKENDS = ["default.qubit", "lightning.qubit"]
 
 
 def test_catalog_keys_present():
-    for k in ["default.qubit", "sv1", "ionq_aria_1", "rigetti_ankaa_3"]:
+    for k in ["default.qubit", "sv1", "ionq_forte_1", "rigetti_cepheus"]:
         assert k in CATALOG
 
 
 def test_cost_estimate_qpu_includes_task_fee():
-    cost = estimate_cost_usd("ionq_aria_1", shots=100)
-    assert cost == 100 * 0.03 + 0.30
+    cost = estimate_cost_usd("ionq_forte_1", shots=100)
+    assert cost == 100 * 0.08 + 0.30
 
 
 def test_cost_estimate_local_is_zero():

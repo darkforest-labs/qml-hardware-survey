@@ -58,13 +58,13 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 
 **Goal:** one small, well-characterized run on the cheapest QPU. Inference-only, no training.
 
-- [ ] Pick **Rigetti Ankaa-3** ($0.0009/shot + $0.30/task) — cheapest per-shot.
+- [ ] Pick **Rigetti Cepheus-1-108Q** ($0.000425/shot + $0.30/task) — cheapest per-shot (replaced Ankaa-3 on 2026-04-07).
 - [ ] Workflow: train on `default.qubit` to convergence on parity, then run *forward pass only* on QPU with the trained weights. Compare QPU-Z-expectations to simulator-Z-expectations sample-by-sample. Isolates "circuit fidelity" from "training under noise."
-- [ ] Shots: 200. Estimated cost ~$0.48. Cap: `--max-cost-usd 1.00`.
+- [ ] Shots: 200. Estimated cost ~$0.39 (200 × $0.000425 + $0.30). Cap: `--max-cost-usd 1.00`.
 - [ ] Capture queue wait time separately from circuit wall-time in `RunRecord` (new fields: `queue_wait_s`, `device_runtime_s`).
-- [ ] Repeat once on **IQM Garnet** ($0.00145/shot, EU region) and once on **IonQ Aria-1** ($0.03/shot, slow but high fidelity). Three integration notes.
+- [ ] Repeat once on **IQM Garnet** ($0.00145/shot, EU region) and once on **IonQ Forte-1** ($0.08/shot, slow but high fidelity). Three integration notes.
 
-**Exit:** three `docs/integration-notes/{rigetti_ankaa_3,iqm_garnet,ionq_aria_1}.md` files with billed cost, queue time, expectation-value agreement vs simulator, and any errors hit. SUMMARY.md updated.
+**Exit:** three `docs/integration-notes/{rigetti_cepheus,iqm_garnet,ionq_forte_1}.md` files with billed cost, queue time, expectation-value agreement vs simulator, and any errors hit. SUMMARY.md updated.
 
 **Hard cap:** $5 cumulative.
 
@@ -74,8 +74,8 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 
 **Goal:** answer "can the hybrid model train end-to-end against a QPU at all?" — not "is it good."
 
-- [ ] Pick the *single* (backend, task) pair with the best Phase-3 fidelity. Almost certainly `rigetti_ankaa_3 × parity`.
-- [ ] Run **5 epochs** with shots=200, full QPU in the loop. Cost estimate: ~5 × ($0.18 + $0.30) ≈ $2.40 plus queue overhead.
+- [ ] Pick the *single* (backend, task) pair with the best Phase-3 fidelity. Almost certainly `rigetti_cepheus × parity`.
+- [ ] Run **5 epochs** with shots=200, full QPU in the loop. Cost estimate: ~5 × ($0.085 + $0.30) ≈ $1.93 plus queue overhead.
 - [ ] Compare against (a) same model trained on `default.qubit` with shots=200 (shot-noise-only), (b) same model trained noise-free, (c) parameter-matched MLP. Already automatic via `MatchedMLP` for (c); add (a) and (b) as additional records with a shared `experiment_group` field.
 - [ ] If gradients are dominated by shot noise (very likely), document it. Don't grind epochs hoping it converges; that's burning money to confirm a known phenomenon.
 
@@ -110,6 +110,6 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 
 ## Out of scope (call it explicitly)
 
-- IBM Quantum, Quantinuum, Pasqal, neutral-atom, photonic backends. They require different SDKs and break the "one swap point" claim. Mention as future work, don't start.
+- IBM Quantum, Quantinuum, Pasqal, neutral-atom, photonic backends. They require different SDKs and break the "one swap point" claim. Mention as future work, don't start. This includes **QuEra Aquila**, which *is* on Braket but is an Analog Hamiltonian Simulation (neutral-atom) device, not a gate-model QPU — deliberately omitted from `catalog.py`.
 - Error mitigation, circuit cutting, ZNE, etc. Those are research projects, not integration surveys.
 - Anything labeled "quantum advantage." Not the question being asked here.

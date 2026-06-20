@@ -6,6 +6,21 @@ of truth at runtime (`AwsDevice.properties`); this module exists only so we can
 estimate costs and gate operations without a network round-trip.
 
 Update as AWS changes pricing or device availability.
+
+Snapshot as of 2026-06-19. Sources: AWS Braket pricing page
+(<https://aws.amazon.com/braket/pricing/>) and the supported-devices doc
+(<https://docs.aws.amazon.com/braket/latest/developerguide/braket-devices.html>).
+Notable changes since the 2026-04 snapshot:
+  - IonQ Aria-1 retired from Braket; current IonQ QPU is Forte-1
+    (also Forte-Enterprise-1), $0.08/shot.
+  - Rigetti Cepheus-1-108Q (108 qubits) launched 2026-04-07 and replaces
+    Ankaa-3; at $0.000425/shot it is now the cheapest gate-model QPU. Ankaa-3
+    is now RETIRED (confirmed live via `braket search-devices` on 2026-06-19)
+    and is dropped from this catalog.
+  - New: AQT Ibex-Q1 (12-qubit trapped ion, EU) and IQM Emerald (54 qubits).
+  - IQM Garnet unchanged at $0.00145/shot.
+QuEra Aquila (neutral-atom / Analog Hamiltonian Simulation) is intentionally
+omitted: it is not gate-based and is out of scope per ROADMAP.md.
 """
 from __future__ import annotations
 
@@ -77,28 +92,21 @@ CATALOG: dict[str, BackendInfo] = {
         qubits=50,
         cost_per_minute_usd=0.275,
         region="all",
-        notes="Tensor network simulator.",
+        notes="Tensor network simulator. Per-minute rate retained from the "
+        "2026-04 snapshot; not separately tabulated on the 2026-06 pricing page.",
     ),
-    # ---- QPUs ----
-    "ionq_aria_1": BackendInfo(
-        name="ionq_aria_1",
+    # ---- QPUs (gate-based, in-scope) ----
+    # Ordered cheapest -> most expensive per shot. All carry a $0.30 per-task fee.
+    "rigetti_cepheus": BackendInfo(
+        name="rigetti_cepheus",
         kind="qpu",
-        arn="arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1",
-        qubits=25,
-        cost_per_shot_usd=0.03,
-        per_task_fee_usd=0.30,
-        region="us-east-1",
-        notes="Trapped ion, all-to-all connectivity. Slow but high fidelity.",
-    ),
-    "rigetti_ankaa_3": BackendInfo(
-        name="rigetti_ankaa_3",
-        kind="qpu",
-        arn="arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3",
-        qubits=84,
-        cost_per_shot_usd=0.0009,
+        arn="arn:aws:braket:us-west-1::device/qpu/rigetti/Cepheus-1-108Q",
+        qubits=108,
+        cost_per_shot_usd=0.000425,
         per_task_fee_usd=0.30,
         region="us-west-1",
-        notes="Superconducting, limited connectivity. Cheapest gate-model QPU.",
+        notes="Superconducting, 3x4 array of 9-qubit chiplets. Launched "
+        "2026-04-07, replaces Ankaa-3. Cheapest gate-model QPU.",
     ),
     "iqm_garnet": BackendInfo(
         name="iqm_garnet",
@@ -109,6 +117,39 @@ CATALOG: dict[str, BackendInfo] = {
         per_task_fee_usd=0.30,
         region="eu-north-1",
         notes="Superconducting, EU region.",
+    ),
+    "iqm_emerald": BackendInfo(
+        name="iqm_emerald",
+        kind="qpu",
+        arn="arn:aws:braket:eu-north-1::device/qpu/iqm/Emerald",
+        qubits=54,
+        cost_per_shot_usd=0.0016,
+        per_task_fee_usd=0.30,
+        region="eu-north-1",
+        notes="Superconducting, EU region. Larger successor to Garnet.",
+    ),
+    "aqt_ibex_q1": BackendInfo(
+        name="aqt_ibex_q1",
+        kind="qpu",
+        arn="arn:aws:braket:eu-north-1::device/qpu/aqt/Ibex-Q1",
+        qubits=12,
+        cost_per_shot_usd=0.0235,
+        per_task_fee_usd=0.30,
+        region="eu-north-1",
+        notes="Trapped ion (Ca-40), all-to-all connectivity, EU region "
+        "(Innsbruck). First EU-hosted trapped-ion device on Braket.",
+    ),
+    "ionq_forte_1": BackendInfo(
+        name="ionq_forte_1",
+        kind="qpu",
+        arn="arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1",
+        qubits=36,
+        cost_per_shot_usd=0.08,
+        per_task_fee_usd=0.30,
+        region="us-east-1",
+        notes="Trapped ion, all-to-all connectivity. Replaces Aria-1 (retired). "
+        "At the 2026-06-19 snapshot Forte-1 was OFFLINE and Forte-Enterprise-1 "
+        "(.../qpu/ionq/Forte-Enterprise-1) was ONLINE at the same per-shot price.",
     ),
 }
 

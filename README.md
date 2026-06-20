@@ -23,14 +23,21 @@ techniques, side-by-side with classical baselines.
 
 ## Backends covered
 
+Device lineup and prices are an AWS Braket snapshot **as of 2026-06-19**
+(`src/qmlsurvey/catalog.py` is the source of truth). AWS changes these; see the
+catalog module header for the change log.
+
 | Backend | Cost | Status |
 |---|---|---|
 | `default.qubit` (PennyLane local) | free | working |
-| `braket.local.qubit` (Braket local sim) | free | working |
-| `braket.aws.qubit` → SV1 | ~$0.075/min | gated by `--max-cost-usd` |
-| `braket.aws.qubit` → IonQ Aria | ~$0.03/shot + $0.30/task | gated, manual confirm |
-| `braket.aws.qubit` → Rigetti Ankaa-3 | ~$0.0009/shot + $0.30/task | gated, manual confirm |
+| `lightning.qubit` (PennyLane C++ local) | free | working |
+| `braket.local.qubit` (Braket local sim) | free | working (forward/inference only — see local-sims note) |
+| `braket.aws.qubit` → SV1 / DM1 | ~$0.075/min | gated by `--max-cost-usd` |
+| `braket.aws.qubit` → Rigetti Cepheus-1-108Q | ~$0.000425/shot + $0.30/task | gated, manual confirm |
 | `braket.aws.qubit` → IQM Garnet | ~$0.00145/shot + $0.30/task | gated, manual confirm |
+| `braket.aws.qubit` → IQM Emerald | ~$0.0016/shot + $0.30/task | gated, manual confirm |
+| `braket.aws.qubit` → AQT Ibex-Q1 | ~$0.0235/shot + $0.30/task | gated, manual confirm |
+| `braket.aws.qubit` → IonQ Forte-1 | ~$0.08/shot + $0.30/task | gated, manual confirm |
 
 ## Hard rules
 
@@ -53,8 +60,8 @@ python -m qmlsurvey.runner --backend default.qubit --task parity --epochs 30
 # Cloud sim (will prompt to confirm cost)
 python -m qmlsurvey.runner --backend sv1 --task moons --epochs 20 --max-cost-usd 1.00
 
-# Real QPU (will prompt twice)
-python -m qmlsurvey.runner --backend ionq_aria_1 --task parity --epochs 1 --shots 200 --max-cost-usd 5.00
+# Real QPU (will prompt twice). Rigetti Cepheus is the cheapest gate QPU.
+python -m qmlsurvey.runner --backend rigetti_cepheus --task parity --epochs 1 --shots 200 --max-cost-usd 1.00
 ```
 
 ## Reference configuration

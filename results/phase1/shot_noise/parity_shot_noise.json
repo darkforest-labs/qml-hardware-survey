@@ -14,7 +14,7 @@
     "shots": null,
     "final_test_acc": 1.0,
     "final_loss": 0.030082568526268005,
-    "wall_time_s": 1.3677562000084436
+    "wall_time_s": 1.3029230000029202
   },
   "cells": [
     {
@@ -37,7 +37,7 @@
         1.0,
         1.0
       ],
-      "trial_seconds_mean": 0.007923369998752604
+      "trial_seconds_mean": 0.008009059997857549
     },
     {
       "backend": "default.qubit",
@@ -83,7 +83,7 @@
         1.0,
         1.0
       ],
-      "trial_seconds_mean": 1.989118150001741
+      "trial_seconds_mean": 1.8473940800009587
     },
     {
       "backend": "braket.local.qubit",
@@ -105,7 +105,7 @@
         1.0,
         1.0
       ],
-      "trial_seconds_mean": 1.406108879999374
+      "trial_seconds_mean": 1.3484604899997066
     },
     {
       "backend": "braket.local.qubit",
@@ -127,7 +127,7 @@
         1.0,
         1.0
       ],
-      "trial_seconds_mean": 1.348114999999234
+      "trial_seconds_mean": 1.306788019999658
     },
     {
       "backend": "braket.local.qubit",
@@ -149,7 +149,7 @@
         1.0,
         1.0
       ],
-      "trial_seconds_mean": 1.309209049999481
+      "trial_seconds_mean": 1.3902217200004088
     }
   ],
   "environment": {

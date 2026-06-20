@@ -4,6 +4,37 @@ Captures friction encountered while running the reference config across the
 three local simulators currently wired into `qmlsurvey`. External register:
 descriptions of what was observed, not interpretations.
 
+## Refresh — 2026-06-19
+
+All Phase-1 sweeps were re-run on the current installable stack:
+`pennylane==0.42.3`, `pennylane-lightning==0.42.0`, `torch==2.11.0`,
+`numpy==2.2.6`, `amazon-braket-sdk==1.110.1`,
+`amazon-braket-pennylane-plugin==1.33.7`.
+
+- **Deterministic results reproduced exactly.** Phase-0 reference accuracies,
+  the cross-sim accuracy/loss matrix, and the full trainability
+  gradient-variance grid are bit-for-bit identical to the 2026-04 run (only
+  wall times and timestamps differ). The harness is stable across the ~7-week
+  gap on this machine.
+- **Both integration blockers reproduce unchanged** on `pennylane==0.42.3`:
+  PL #4462 (broadcasted parameter-shift on `braket.local.qubit`) and the
+  `default.qubit` + torch + finite-shots `ValueError: probabilities do not
+  sum to 1`. See the sections below.
+- **The "does a newer PennyLane fix them?" question could not be answered in
+  this environment.** Upstream PennyLane has advanced to **0.45.0**
+  (released 2026-05-12), but the package index reachable from this host is
+  frozen at 0.42.3: `pip` enumerates a maximum of `0.42.3` even against
+  `--index-url https://pypi.org/simple`, and refuses `pennylane==0.43.0` /
+  `0.45.0` with "No matching distribution found." Retesting #4462 and the
+  finite-shots sampler against ≥0.43 is a follow-up that requires a host
+  with index access to current PennyLane.
+- **One stochastic delta.** The 100-shot `braket.local.qubit` parity cell came
+  back `1.0000 ± 0.0000` this run, versus `0.9981 ± 0.0061` in 2026-04. The
+  shot-noise script seeds `default.qubit`'s sampler but does not control
+  `braket.local.qubit`'s sampler, so that boundary cell varies run-to-run —
+  consistent with the original observation that shot noise barely registers
+  on this clean-margin task.
+
 ## Backends covered
 
 | Backend              | Provider              | Analytic mode | Adjoint diff | Notes |
@@ -19,12 +50,12 @@ descriptions of what was observed, not interpretations.
 
 | Backend            | Task       | Final test acc | Final loss | Wall time (s) |
 |--------------------|------------|---------------:|-----------:|--------------:|
-| `default.qubit`    | parity     | 1.0000         | 0.030083   |  0.96 |
-| `default.qubit`    | moons      | 0.9000         | 0.220416   |  1.06 |
-| `default.qubit`    | mnist_pca  | 1.0000         | 0.047948   |  0.94 |
-| `lightning.qubit`  | parity     | 1.0000         | 0.030083   | 23.05 |
-| `lightning.qubit`  | moons      | 0.9000         | 0.220416   | 26.85 |
-| `lightning.qubit`  | mnist_pca  | 1.0000         | 0.047948   | 33.09 |
+| `default.qubit`    | parity     | 1.0000         | 0.030083   |  1.19 |
+| `default.qubit`    | moons      | 0.9000         | 0.220416   |  1.21 |
+| `default.qubit`    | mnist_pca  | 1.0000         | 0.047948   |  1.26 |
+| `lightning.qubit`  | parity     | 1.0000         | 0.030083   | 33.02 |
+| `lightning.qubit`  | moons      | 0.9000         | 0.220416   | 40.46 |
+| `lightning.qubit`  | mnist_pca  | 1.0000         | 0.047948   | 54.67 |
 | `braket.local.qubit` | parity   | —              | —          | —     |
 | `braket.local.qubit` | moons    | —              | —          | —     |
 | `braket.local.qubit` | mnist_pca| —              | —          | —     |
@@ -38,8 +69,10 @@ identical on the metrics PennyLane returns to PyTorch). Treating
 
 ### Wall-time observation
 
-At `n_qubits=4`, `lightning.qubit` is roughly 23–33× slower than
-`default.qubit` end-to-end. This is consistent with PennyLane's published
+At `n_qubits=4`, `lightning.qubit` is roughly 28–43× slower than
+`default.qubit` end-to-end on the 2026-06-19 run (the 2026-04 run measured
+23–33×; the gap is wall-time noise — the accuracies and losses above are
+bit-identical across both runs). This is consistent with PennyLane's published
 guidance that the C++ backend pays a per-call overhead that only amortizes
 on larger circuits; we have not measured the crossover point yet.
 
@@ -88,7 +121,7 @@ forward inference (10 independent shot draws per cell). Recorded in
 | `braket.local.qubit` | 5000    | 1.0000   | 0.0000 | 1.000  | 1.000  | option 1 works         |
 | `braket.local.qubit` | 1000    | 1.0000   | 0.0000 | 1.000  | 1.000  | option 1 works         |
 | `braket.local.qubit` | 500     | 1.0000   | 0.0000 | 1.000  | 1.000  | option 1 works         |
-| `braket.local.qubit` | 100     | 0.9981   | 0.0061 | 0.981  | 1.000  | first deviation        |
+| `braket.local.qubit` | 100     | 1.0000   | 0.0000 | 1.000  | 1.000  | 2026-04 run: 0.9981 ±0.0061 (stochastic) |
 
 Two integration findings:
 
@@ -105,10 +138,11 @@ Two integration findings:
    rather than masking the failure.
 
 The parity model used here is small and trains to a clean separation, so
-shot noise barely registers even at 100 shots — only one trial out of ten
-showed a single misclassified test point. Tasks with smaller margins
-(planned for later phases) should produce more discriminating shot-noise
-data.
+shot noise barely registers even at 100 shots: the 2026-04 run had a single
+misclassified test point in one trial out of ten (0.9981); the 2026-06 re-run
+had none (1.0000). Either way the cell sits at the boundary of detectability.
+Tasks with smaller margins (planned for later phases) should produce more
+discriminating shot-noise data.
 
 ## Trainability / gradient-variance sweep
 

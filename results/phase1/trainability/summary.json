@@ -22,7 +22,7 @@
   "seed": 0,
   "init_distribution": "uniform[-pi, pi]",
   "loss": "cross_entropy(model(X_fixed), y_fixed)",
-  "wall_time_s_total": 352.80698870000197,
+  "wall_time_s_total": 525.1680766999998,
   "cells": [
     {
       "n_qubits": 2,
@@ -36,8 +36,8 @@
       "grad_var_first": 0.004412727953702582,
       "grad_abs_mean": 0.020047854846473857,
       "grad_abs_max": 0.23574665188789368,
-      "wall_time_s": 1.6038555999984965,
-      "seconds_per_init": 0.008019277999992483
+      "wall_time_s": 1.5464503999974113,
+      "seconds_per_init": 0.007732251999987057
     },
     {
       "n_qubits": 2,
@@ -51,8 +51,8 @@
       "grad_var_first": 0.0002334137575743655,
       "grad_abs_mean": 0.009355551313562955,
       "grad_abs_max": 0.06913648545742035,
-      "wall_time_s": 2.0751439000014216,
-      "seconds_per_init": 0.010375719500007107
+      "wall_time_s": 3.0099577000000863,
+      "seconds_per_init": 0.015049788500000431
     },
     {
       "n_qubits": 2,
@@ -66,8 +66,8 @@
       "grad_var_first": 0.0001020476727926468,
       "grad_abs_mean": 0.005883078831700234,
       "grad_abs_max": 0.04097484424710274,
-      "wall_time_s": 3.2598769000032917,
-      "seconds_per_init": 0.01629938450001646
+      "wall_time_s": 4.624307000005501,
+      "seconds_per_init": 0.023121535000027508
     },
     {
       "n_qubits": 2,
@@ -81,8 +81,8 @@
       "grad_var_first": 3.1838599374767567e-06,
       "grad_abs_mean": 0.0013209817944780807,
       "grad_abs_max": 0.0058293649926781654,
-      "wall_time_s": 5.291139299995848,
-      "seconds_per_init": 0.02645569649997924
+      "wall_time_s": 8.055282799999986,
+      "seconds_per_init": 0.040276413999999934
     },
     {
       "n_qubits": 4,
@@ -96,8 +96,8 @@
       "grad_var_first": 0.00017712560984456708,
       "grad_abs_mean": 0.005836704704169146,
       "grad_abs_max": 0.09171528369188309,
-      "wall_time_s": 2.4645501999912085,
-      "seconds_per_init": 0.012322750999956042
+      "wall_time_s": 4.147758500002965,
+      "seconds_per_init": 0.020738792500014824
     },
     {
       "n_qubits": 4,
@@ -111,8 +111,8 @@
       "grad_var_first": 5.3759974469710624e-05,
       "grad_abs_mean": 0.005103948323119975,
       "grad_abs_max": 0.05122612044215202,
-      "wall_time_s": 4.313585099996999,
-      "seconds_per_init": 0.021567925499984996
+      "wall_time_s": 5.883013400001801,
+      "seconds_per_init": 0.029415067000009003
     },
     {
       "n_qubits": 4,
@@ -126,8 +126,8 @@
       "grad_var_first": 8.107722512271189e-05,
       "grad_abs_mean": 0.009897956630194358,
       "grad_abs_max": 0.06875340640544891,
-      "wall_time_s": 7.041641100004199,
-      "seconds_per_init": 0.035208205500020996
+      "wall_time_s": 9.95770540000376,
+      "seconds_per_init": 0.049788527000018803
     },
     {
       "n_qubits": 4,
@@ -141,8 +141,8 @@
       "grad_var_first": 0.00011073832229673555,
       "grad_abs_mean": 0.015062673157491654,
       "grad_abs_max": 0.08978260308504105,
-      "wall_time_s": 11.758605299997726,
-      "seconds_per_init": 0.058793026499988625
+      "wall_time_s": 17.057430500004557,
+      "seconds_per_init": 0.08528715250002278
     },
     {
       "n_qubits": 6,
@@ -156,8 +156,8 @@
       "grad_var_first": 5.75920365685995e-05,
       "grad_abs_mean": 0.0025138237676711286,
       "grad_abs_max": 0.04395744204521179,
-      "wall_time_s": 3.3553639000019757,
-      "seconds_per_init": 0.01677681950000988
+      "wall_time_s": 5.780817800005025,
+      "seconds_per_init": 0.028904089000025123
     },
     {
       "n_qubits": 6,
@@ -171,8 +171,8 @@
       "grad_var_first": 5.18774210337957e-05,
       "grad_abs_mean": 0.0035449308610331323,
       "grad_abs_max": 0.05612447112798691,
-      "wall_time_s": 4.816456499989727,
-      "seconds_per_init": 0.024082282499948635
+      "wall_time_s": 8.700268900000083,
+      "seconds_per_init": 0.04350134450000041
     },
     {
       "n_qubits": 6,
@@ -186,8 +186,8 @@
       "grad_var_first": 1.0896533612313636e-05,
       "grad_abs_mean": 0.003545448790644154,
       "grad_abs_max": 0.0269867405295372,
-      "wall_time_s": 7.60362680000253,
-      "seconds_per_init": 0.03801813400001265
+      "wall_time_s": 14.520090600002732,
+      "seconds_per_init": 0.07260045300001366
     },
     {
       "n_qubits": 6,
@@ -201,8 +201,8 @@
       "grad_var_first": 2.7945705219431606e-05,
       "grad_abs_mean": 0.00579209418348309,
       "grad_abs_max": 0.032170966267585754,
-      "wall_time_s": 14.061903699999675,
-      "seconds_per_init": 0.07030951849999838
+      "wall_time_s": 25.720734400005313,
+      "seconds_per_init": 0.12860367200002656
     },
     {
       "n_qubits": 8,
@@ -216,8 +216,8 @@
       "grad_var_first": 8.446577652140096e-05,
       "grad_abs_mean": 0.0023780144704402604,
       "grad_abs_max": 0.04924054071307182,
-      "wall_time_s": 5.100032200003625,
-      "seconds_per_init": 0.025500161000018125
+      "wall_time_s": 8.711823899997398,
+      "seconds_per_init": 0.04355911949998699
     },
     {
       "n_qubits": 8,
@@ -231,8 +231,8 @@
       "grad_var_first": 7.71581193960471e-06,
       "grad_abs_mean": 0.0015818072845789348,
       "grad_abs_max": 0.02999160997569561,
-      "wall_time_s": 7.429786599997897,
-      "seconds_per_init": 0.03714893299998948
+      "wall_time_s": 12.98769679999532,
+      "seconds_per_init": 0.06493848399997659
     },
     {
       "n_qubits": 8,
@@ -246,8 +246,8 @@
       "grad_var_first": 3.160912763726789e-06,
       "grad_abs_mean": 0.001740087297850029,
       "grad_abs_max": 0.015985233709216118,
-      "wall_time_s": 12.031005700002424,
-      "seconds_per_init": 0.06015502850001212
+      "wall_time_s": 21.665355299999646,
+      "seconds_per_init": 0.10832677649999824
     },
     {
       "n_qubits": 8,
@@ -261,8 +261,8 @@
       "grad_var_first": 5.469653618271722e-06,
       "grad_abs_mean": 0.0025857178072411337,
       "grad_abs_max": 0.01635809801518917,
-      "wall_time_s": 28.164276900002733,
-      "seconds_per_init": 0.14082138450001366
+      "wall_time_s": 38.45306929999788,
+      "seconds_per_init": 0.1922653464999894
     },
     {
       "n_qubits": 10,
@@ -276,8 +276,8 @@
       "grad_var_first": 4.3927527179029436e-05,
       "grad_abs_mean": 0.0014465505893105051,
       "grad_abs_max": 0.037757787853479385,
-      "wall_time_s": 10.011187600000994,
-      "seconds_per_init": 0.05005593800000497
+      "wall_time_s": 13.992306899999676,
+      "seconds_per_init": 0.06996153449999838
     },
     {
       "n_qubits": 10,
@@ -291,8 +291,8 @@
       "grad_var_first": 2.6694541585648786e-06,
       "grad_abs_mean": 0.0007337293859946386,
       "grad_abs_max": 0.0180246252566576,
-      "wall_time_s": 14.799601599996095,
-      "seconds_per_init": 0.07399800799998048
+      "wall_time_s": 20.113730699995358,
+      "seconds_per_init": 0.10056865349997679
     },
     {
       "n_qubits": 10,
@@ -306,8 +306,8 @@
       "grad_var_first": 1.536185224400794e-06,
       "grad_abs_mean": 0.000822093250554398,
       "grad_abs_max": 0.011392039246857166,
-      "wall_time_s": 23.49971910000022,
-      "seconds_per_init": 0.11749859550000111
+      "wall_time_s": 33.1779497000025,
+      "seconds_per_init": 0.1658897485000125
     },
     {
       "n_qubits": 10,
@@ -321,8 +321,8 @@
       "grad_var_first": 1.157164652047738e-06,
       "grad_abs_mean": 0.001005083016061063,
       "grad_abs_max": 0.007101533934473991,
-      "wall_time_s": 42.822641199993086,
-      "seconds_per_init": 0.21411320599996542
+      "wall_time_s": 59.401198500003375,
+      "seconds_per_init": 0.29700599250001686
     },
     {
       "n_qubits": 12,
@@ -336,8 +336,8 @@
       "grad_var_first": 4.3878261644688055e-05,
       "grad_abs_mean": 0.0010364850258735223,
       "grad_abs_max": 0.03858870640397072,
-      "wall_time_s": 16.018652500002645,
-      "seconds_per_init": 0.08009326250001322
+      "wall_time_s": 22.522885899998073,
+      "seconds_per_init": 0.11261442949999037
     },
     {
       "n_qubits": 12,
@@ -351,8 +351,8 @@
       "grad_var_first": 5.36140324170858e-06,
       "grad_abs_mean": 0.0007152458281642159,
       "grad_abs_max": 0.02406635507941246,
-      "wall_time_s": 24.21320700000797,
-      "seconds_per_init": 0.12106603500003985
+      "wall_time_s": 33.182340600003954,
+      "seconds_per_init": 0.16591170300001978
     },
     {
       "n_qubits": 12,
@@ -366,8 +366,8 @@
       "grad_var_first": 5.31919044849478e-07,
       "grad_abs_mean": 0.0005257294954618643,
       "grad_abs_max": 0.004331565462052822,
-      "wall_time_s": 34.59186660000705,
-      "seconds_per_init": 0.17295933300003527
+      "wall_time_s": 54.729418799994164,
+      "seconds_per_init": 0.27364709399997084
     },
     {
       "n_qubits": 12,
@@ -381,8 +381,8 @@
       "grad_var_first": 3.975321098365889e-07,
       "grad_abs_mean": 0.0005857022050338287,
       "grad_abs_max": 0.004060022532939911,
-      "wall_time_s": 66.38853110000491,
-      "seconds_per_init": 0.33194265550002455
+      "wall_time_s": 97.07306619999872,
+      "seconds_per_init": 0.4853653309999936
     }
   ],
   "environment": {
