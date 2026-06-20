@@ -154,14 +154,40 @@ CATALOG: dict[str, BackendInfo] = {
 }
 
 
+# Cloud simulators bill per-minute with a 3-second minimum *per task*.
+CLOUD_SIM_MIN_TASK_MINUTES = 0.05  # 3 s
+
+
 def estimate_cost_usd(
-    backend: str, shots: int, estimated_runtime_minutes: float = 0.05
+    backend: str,
+    shots: int,
+    n_tasks: int = 1,
+    estimated_runtime_minutes: float = CLOUD_SIM_MIN_TASK_MINUTES,
 ) -> float:
+    """Estimate the USD cost of a run.
+
+    Cost scales with ``n_tasks``, not just ``shots``. Each Braket quantum task
+    is billed independently, and a broadcasted forward over a batch of B inputs
+    submits B tasks; parameter-shift gradients and multiple epochs multiply this
+    further. Calibrated against a real SV1 run — 2 broadcast inputs billed
+    $0.0075 = ``2 x max(3 s, runtime) x $0.075/min`` — see
+    ``docs/integration-notes/sv1.md``.
+
+    - ``qpu``:       ``n_tasks x (cost_per_shot x shots + per_task_fee)``
+    - ``cloud_sim``: ``n_tasks x max(3 s, runtime) x cost_per_minute``
+
+    Callers issuing multi-task runs (any batch > 1, any gradient, any epoch
+    count) MUST pass the real ``n_tasks``; the default of 1 only covers a single
+    single-input task and will under-estimate otherwise. Never raise a cost cap
+    to make a run fit — fix the ``n_tasks`` estimate instead.
+    """
     info = CATALOG[backend]
     if info.kind == "qpu":
-        return info.cost_per_shot_usd * shots + info.per_task_fee_usd
+        per_task = info.cost_per_shot_usd * shots + info.per_task_fee_usd
+        return per_task * n_tasks
     if info.kind == "cloud_sim":
-        return info.cost_per_minute_usd * max(0.05, estimated_runtime_minutes)
+        per_task_minutes = max(CLOUD_SIM_MIN_TASK_MINUTES, estimated_runtime_minutes)
+        return info.cost_per_minute_usd * per_task_minutes * n_tasks
     return 0.0
 
 

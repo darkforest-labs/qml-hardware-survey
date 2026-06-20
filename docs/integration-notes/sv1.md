@@ -18,13 +18,22 @@ External register: what was observed, not interpretation.
 
 ## First paid call — inference only
 
-A *training* run is **not** possible on SV1 for the same reason as
-`braket.local.qubit`: the plugin has no adjoint support, so PennyLane falls
-back to parameter-shift, which does not support broadcasted parameters
-(PL #4462). `loss.backward()` raises `NotImplementedError`. The runner's
-`--epochs 1` path would pay for the forward tasks and then crash on the
-gradient. So the first paid call is a **forward pass only**, mirroring the
-option-1 inference path already used for `braket.local.qubit`.
+A *training* run via the current code path is **not expected to work** on SV1.
+The model broadcasts the batch through the QNode (`model.py`, hard rule #4),
+and with `diff_method="best"` a Braket device routes gradients through
+PennyLane's parameter-shift transform, which does not support broadcasted
+parameters (PL #4462) — `loss.backward()` raises `NotImplementedError`.
+
+Scope of evidence: this failure is **confirmed empirically on
+`braket.local.qubit`** (all three cross-sim training runs, this session). It is
+**inferred, not paid-to-confirm, on SV1** — I ran only the forward call. The one
+caveat specific to SV1: SV1 has a native server-side *adjoint gradient* that
+`"best"` might select instead of parameter-shift, in which case a training
+attempt would fail *differently* (that path has its own no-broadcast / `shots=0`
+/ single-observable constraints) or, in a narrow config, might succeed. Settling
+that costs a small SV1 spend we have not made. Either way, the first paid call
+here is a **forward pass only**, mirroring the option-1 inference path used for
+`braket.local.qubit`.
 
 - Model: `HybridModel(n_qubits=4, n_layers=2)`, task `parity`, `shots=100`.
 - Inputs: **2** parity test points (deliberately tiny to minimise cost).
@@ -64,11 +73,12 @@ discipline, do **not** raise caps to compensate — fix the estimator.
    The Braket service-linked role only grants S3 access to `amazon-braket-*`
    buckets. `aws-setup.md` §3 has been corrected. (No task was created on the
    rejected attempt, so it cost nothing.)
-2. **Training is blocked on SV1 (PL #4462)**, identical to
-   `braket.local.qubit`. Only forward/inference is reachable until the
-   broadcasted parameter-shift issue is resolved upstream. Whether
-   PennyLane ≥0.43 fixes it could not be tested here — the environment's
-   package index is frozen at 0.42.3 (see `local-sims.md`).
+2. **Training via the current broadcasted path is blocked** — confirmed on
+   `braket.local.qubit` (PL #4462), inferred on SV1 (not paid-to-confirm; see
+   the caveat above about SV1's native adjoint gradient). Forward/inference is
+   the reachable path. Whether PennyLane ≥0.43 fixes #4462 could not be tested
+   here — the environment's package index is frozen at 0.42.3 (see
+   `local-sims.md`).
 3. **The 3 s per-task minimum dominates tiny-circuit cost.** Actual compute was
    5 ms; billed was 6 s. Batching more shots into a single task is far cheaper
    than spreading work across many minimum-billed tasks.

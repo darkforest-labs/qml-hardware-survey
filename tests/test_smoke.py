@@ -27,6 +27,15 @@ def test_cost_estimate_local_is_zero():
     assert estimate_cost_usd("default.qubit", shots=1000) == 0.0
 
 
+def test_cost_estimate_scales_with_task_count():
+    # QPU: per-task cost (shots + task fee) scales linearly with n_tasks.
+    one = estimate_cost_usd("ionq_forte_1", shots=100, n_tasks=1)
+    assert estimate_cost_usd("ionq_forte_1", shots=100, n_tasks=4) == pytest.approx(one * 4)
+    # Cloud sim: calibrated against the real SV1 run — 2 broadcast inputs
+    # billed $0.0075 (2 tasks x 3 s minimum x $0.075/min). See sv1.md.
+    assert estimate_cost_usd("sv1", shots=100, n_tasks=2) == pytest.approx(0.0075)
+
+
 def test_hybrid_model_forward_and_backprop():
     dev = get_device("default.qubit", wires=4, shots=None)
     model = HybridModel(in_features=4, out_features=2, n_qubits=4, n_layers=2, device=dev)
