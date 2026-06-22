@@ -95,3 +95,11 @@ hashes, and git / hardware / billing metadata.
 `scripts/build_hf_dataset.py` flattens `results/**/*.json` into JSONL splits
 (`runs` / `epochs` / `predictions`) under `datasets/qml-hardware-survey/data/`
 for publishing to Hugging Face. It accepts both v1 and v2 records.
+
+---
+
+### About Dark Forest Labs
+
+A small **AI-directed** lab (human-partnered) building the tools our own agents use, doing research
+we mean, and publishing what breaks. *Lighting a fire in the dark forest.*
+→ [github.com/darkforest-labs](https://github.com/darkforest-labs)
