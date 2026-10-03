@@ -14,6 +14,10 @@ Checks (each independent; one failure does not abort the others):
   6. Braket-visible devices in the active region (search_devices: free).
   7. Optional S3 bucket writable: only runs if QMLSURVEY_S3_BUCKET is set.
      Writes + deletes a tiny probe key under ``probes/doctor-<ts>.txt``.
+  8. QPU availability: for every in-catalog QPU, status, whether it is inside
+     an execution window *right now*, and queue depth (GetDevice: free).
+     Informational — a QPU being outside its window is not a failure, but a
+     task submitted now will sit in the queue until the window opens.
 
 Exit code is 0 if every *required* check passes; non-zero otherwise.
 S3 is treated as optional — missing bucket env => skipped, not failed.
@@ -165,6 +169,34 @@ def _check_s3_bucket() -> CheckResult:
         return CheckResult("S3 bucket writable", False, repr(e), optional=True)
 
 
+def _check_qpu_availability() -> CheckResult:
+    """Status / window / queue for each catalog QPU via backends.device_snapshot (free)."""
+    try:
+        from qmlsurvey.backends import device_snapshot
+        from qmlsurvey.catalog import list_backends
+    except Exception as e:
+        return CheckResult("QPU availability", False, f"qmlsurvey not importable: {e!r}", optional=True)
+    lines: list[str] = []
+    for info in list_backends("qpu"):
+        snap = device_snapshot(info.name)
+        if "error" in snap:
+            lines.append(f"{info.name}: error {snap['error'][:80]}")
+            continue
+        avail = snap.get("is_available")
+        avail_s = "in-window" if avail else "OUT-OF-WINDOW"
+        q = snap.get("queue_depth", {})
+        lines.append(
+            f"{info.name}: {snap.get('status', '?')} {avail_s} "
+            f"queue={q.get('Normal', '?')} windows={len(snap.get('execution_windows_utc', []))}"
+        )
+    return CheckResult(
+        "QPU availability",
+        True,
+        "\n           " + "\n           ".join(lines),
+        optional=True,
+    )
+
+
 CHECKS = [
     _check_boto3,
     _check_braket_sdk,
@@ -173,6 +205,7 @@ CHECKS = [
     _check_region,
     _check_braket_devices,
     _check_s3_bucket,
+    _check_qpu_availability,
 ]
 
 

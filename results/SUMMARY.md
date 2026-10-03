@@ -30,10 +30,10 @@ Reference: `default.qubit` analytic, final_test_acc=1.0000, final_loss=0.030083,
 | backend | shots | acc_mean | acc_std | acc_min | acc_max | note |
 | --- | --- | --- | --- | --- | --- | --- |
 | default.qubit | analytic | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |
-| default.qubit | 5000 | — | — | — | — | ValueError: probabilities do not sum to 1 |
-| default.qubit | 1000 | — | — | — | — | ValueError: probabilities do not sum to 1 |
-| default.qubit | 500 | — | — | — | — | ValueError: probabilities do not sum to 1 |
-| default.qubit | 100 | — | — | — | — | ValueError: probabilities do not sum to 1 |
+| default.qubit | 5000 | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |
+| default.qubit | 1000 | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |
+| default.qubit | 500 | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |
+| default.qubit | 100 | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |
 | braket.local.qubit | 5000 | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |
 | braket.local.qubit | 1000 | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |
 | braket.local.qubit | 500 | 1.0000 | 0.0000 | 1.0000 | 1.0000 |  |

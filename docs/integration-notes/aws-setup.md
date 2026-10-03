@@ -25,7 +25,7 @@
   hosts both `sv1` and `dm1` and is the IonQ region (relevant later).
   - Rigetti devices (Cepheus-1-108Q) live in `us-west-1`.
   - IQM (Garnet, Emerald) and AQT Ibex-Q1 live in `eu-north-1`.
-- Cloud simulators (`sv1`, `dm1`, `tn1`) are listed as `region="all"` in
+- Cloud simulators (`sv1`, `dm1`) are listed as `region="all"` in
   the catalog because Braket exposes them in every Braket-enabled region;
   pick whichever region matches your S3 bucket to avoid cross-region data
   charges.
@@ -167,9 +167,10 @@ source that drove the 2026-06 catalog refresh:
 
 | Region | Device | Provider | Status |
 |--------|--------|----------|--------|
-| us-east-1 | SV1 / DM1 / TN1 | Amazon Braket | ONLINE |
+| us-east-1 | SV1 / DM1 | Amazon Braket | ONLINE |
+| us-east-1 | TN1 | Amazon Braket | RETIRED (re-checked 2026-10-03; was listed ONLINE in June) |
 | us-east-1 | Forte Enterprise 1 | IonQ | ONLINE |
-| us-east-1 | Forte 1 | IonQ | OFFLINE |
+| us-east-1 | Forte 1 | IonQ | OFFLINE in June; ONLINE on 2026-10-03 |
 | us-east-1 | Aria 1 / Aria 2 / Harmony | IonQ | RETIRED |
 | us-east-1 | Aquila | QuEra | ONLINE (neutral-atom; out of scope) |
 | us-west-1 | Cepheus-1-108Q | Rigetti | ONLINE |
@@ -186,3 +187,40 @@ Two integration findings worth carrying into Phase 2/3:
 2. **The S3 results bucket is not yet provisioned** (`QMLSURVEY_S3_BUCKET`
    unset → that check SKIPs). Braket QPU/cloud-sim tasks write results to S3,
    so before the first paid call create the bucket per §3 and export the var.
+
+## 9. Re-check 2026-10-03 — devices, windows, queue
+
+A live `search_devices` over all five Braket regions (`us-east-1`, `us-west-1`,
+`us-west-2`, `eu-north-1`, `eu-west-2`) plus `AwsDevice.properties` for each
+in-catalog QPU. Observed, not interpreted:
+
+| Device | Status | API `qubitCount` | Price | Queue (Normal) | Execution windows (UTC) |
+|---|---|---|---|---|---|
+| Rigetti Cepheus-1-108Q | ONLINE | 107 | $0.000425/shot + $0.30/task | 0 | every day 00:00–06:59, 09:00–19:00, 21:00–23:59 |
+| IQM Garnet | ONLINE | 20 | $0.00145/shot + $0.30/task | 0 | weekdays 00:00–01:29, 03:15–15:29, 17:15–23:59 |
+| IQM Emerald | ONLINE | 54 | $0.0016/shot + $0.30/task | 4 | weekdays 00:00–03:29, 07:20–23:59 |
+| AQT Ibex-Q1 | ONLINE | 12 | $0.0235/shot + $0.30/task | 0 | Mon 11–15, Tue/Wed/Fri 08–15 |
+| IonQ Forte-1 | ONLINE | 36 | $0.08/shot + $0.30/task | 0 | daily, 30-min gap at 18:00 (14:00–20:00 Wed) |
+| IonQ Forte-Enterprise-1 | ONLINE | 36 | $0.08/shot + $0.30/task | 0 | daily, gap Thu 08:00–14:00 |
+| QuEra Aquila (out of scope) | ONLINE | 256 | $0.01/shot + $0.30/task | 0 | Fri 04:00 → Mon 03:59 with gaps |
+| SV1 / DM1 | ONLINE | — | $0.075/min, 3 s minimum per task | — | always |
+| TN1 | **RETIRED** | — | — | — | — |
+
+Retired but still returned by the API: Ankaa-2, Ankaa-3, all Aspens, IonQ
+Aria-1 / Aria-2 / Harmony, Xanadu Borealis, OQC Lucy, all D-Wave systems.
+
+Findings:
+
+1. **Execution windows, not queue depth, set the wait.** At 2026-10-03 ~19:30
+   UTC (a Saturday) every in-catalog QPU except IonQ reported
+   `is_available=False` with an empty queue. A task submitted then would sit
+   until the next window. `scripts/doctor.py` now prints this per QPU, and
+   `runner.run` stores a `device_snapshot` in each `RunRecord` and shows the
+   in-window flag in the confirm prompt.
+2. **Cepheus reports 107 qubits**, not the 108 in its name. Catalog updated.
+3. **Prices unchanged** since June for every in-catalog device. The pricing
+   page lists only SV1's per-minute rate; DM1 is billed the same in practice
+   (see `sv1.md`), TN1 is gone.
+4. **This AWS account is shared with `rydberg-playground`** (Aquila runs,
+   ≈ $68.50 estimated spend to date there). Cost Explorer totals will mix the
+   two projects unless filtered by device ARN or tag.

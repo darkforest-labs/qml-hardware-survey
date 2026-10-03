@@ -4,6 +4,44 @@ Captures friction encountered while running the reference config across the
 three local simulators currently wired into `qmlsurvey`. External register:
 descriptions of what was observed, not interpretations.
 
+## Refresh — 2026-10-03
+
+Stack moved to Python 3.13 with `pennylane==0.45.1`,
+`pennylane-lightning==0.45.0`, `torch==2.14.1`, `numpy==2.5.3`,
+`amazon-braket-sdk==1.127.3.post0`, `amazon-braket-pennylane-plugin==1.35.2`.
+The June note's "package index frozen at 0.42.3" was the Python 3.10 ceiling:
+PennyLane 0.42.3 is the last release for 3.10.
+
+1. **PL #4462 is still open at 0.45.1.** The unchanged `HybridModel` raises the
+   same `NotImplementedError` on `braket.local.qubit` (shots=200) *and* on
+   `default.qubit` with shots=200. Analytic `default.qubit` is unaffected.
+2. **`qml.transforms.broadcast_expand` sidesteps it.** Wrapping the QNode so the
+   batch is split into one tape per input before execution makes
+   `loss.backward()` succeed on both devices, with non-zero gradients on the
+   encoder and the quantum weights. `HybridModel` now applies it whenever the
+   device has finite shots (`model.broadcast_expanded`). Analytic sims keep the
+   single broadcasted tape; the Phase-0/1 analytic results are unaffected.
+3. **Execution count is exactly predictable.** `qml.Tracker` on one `_train`
+   epoch with 8 train / 4 test inputs counted 456 executions for forward +
+   parameter-shift backward (= `8 × (1 + 2 × 28)`) plus 12 for the no-grad
+   eval pass, on both `default.qubit` and `braket.local.qubit`. A 2-epoch
+   parity run (204 / 52) executed 23,820 tapes, matching
+   `catalog.estimate_task_count` to the unit. Wall time on
+   `braket.local.qubit` at 200 shots: 369 s for those 2 epochs (≈ 15 ms per
+   tape), so the 30-epoch reference config would take ≈ 90 min locally.
+4. **The June `default.qubit` + shots "probabilities do not sum to 1" error is
+   gone.** With the expanded path all four finite-shot `default.qubit` cells
+   of the shot-noise sweep now complete (see below; the sweep was re-run).
+5. **Deprecation to watch:** PennyLane 0.45 warns that setting `shots` on the
+   device is deprecated in favour of a `set_shots` transform on the QNode.
+   `backends.get_device` still passes `shots=` to the device; it works, but a
+   future release will need the transform.
+6. **`qml.specs` output changed shape** (dict → `CircuitSpecs` dataclass with a
+   `.resources` object). `runner._circuit_fingerprint` silently recorded
+   `num_gates=0, depth=0` until patched to read both shapes. Records written
+   between the stack upgrade and the patch would have had an empty fingerprint;
+   none were committed.
+
 ## Refresh — 2026-06-19
 
 All Phase-1 sweeps were re-run on the current installable stack:

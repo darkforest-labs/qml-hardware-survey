@@ -59,3 +59,57 @@ def get_device(backend: str, wires: int, shots: int | None = None):
 
 def describe(backend: str) -> BackendInfo:
     return CATALOG[backend]
+
+
+def device_snapshot(backend: str) -> dict:
+    """Best-effort, free, read-only snapshot of a Braket device's current state.
+
+    Returns ``{}`` for local simulators. For cloud sims and QPUs, returns
+    status, ``is_available`` (inside an execution window right now), queue
+    depth, qubit count, listed price and the UTC execution windows. Never
+    raises: any failure is recorded under ``"error"`` so a RunRecord can still
+    be written. Pattern borrowed from rydberg-playground's ``aquila_snapshot``.
+    """
+    info = CATALOG[backend]
+    if info.kind == "local_sim" or not info.arn:
+        return {}
+    from datetime import datetime, timezone
+
+    snap: dict = {
+        "arn": info.arn,
+        "captured_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    try:
+        from braket.aws import AwsDevice
+
+        dev = AwsDevice(info.arn)
+        snap["status"] = str(dev.status)
+        snap["is_available"] = bool(dev.is_available)
+        props = dev.properties
+        svc = getattr(props, "service", None)
+        if svc is not None:
+            snap["execution_windows_utc"] = [
+                {
+                    "day": str(getattr(w.executionDay, "value", w.executionDay)),
+                    "start": str(w.windowStartHour),
+                    "end": str(w.windowEndHour),
+                }
+                for w in (svc.executionWindows or [])
+            ]
+            cost = getattr(svc, "deviceCost", None)
+            if cost is not None:
+                snap["listed_cost"] = {"price": float(cost.price), "unit": str(cost.unit)}
+        paradigm = getattr(props, "paradigm", None)
+        qc = getattr(paradigm, "qubitCount", None)
+        if qc is not None:
+            snap["qubit_count"] = int(qc)
+        try:
+            q = dev.queue_depth()
+            snap["queue_depth"] = {
+                str(getattr(k, "value", k)): v for k, v in q.quantum_tasks.items()
+            }
+        except Exception as e:  # noqa: BLE001 — queue depth is nice-to-have.
+            snap["queue_error"] = repr(e)
+    except Exception as e:  # noqa: BLE001 — snapshot must never block a run.
+        snap["error"] = repr(e)
+    return snap

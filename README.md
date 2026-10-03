@@ -23,15 +23,18 @@ techniques, side-by-side with classical baselines.
 
 ## Backends covered
 
-Device lineup and prices are an AWS Braket snapshot **as of 2026-06-19**
-(`src/qmlsurvey/catalog.py` is the source of truth). AWS changes these; see the
-catalog module header for the change log.
+Device lineup and prices are an AWS Braket snapshot **as of 2026-10-03**
+(`src/qmlsurvey/catalog.py` is the source of truth; TN1 was retired and is no
+longer listed). AWS changes these; see the catalog module header for the change
+log. Every QPU also publishes UTC **execution windows**; outside them a task
+queues until the window opens. `python scripts/doctor.py` shows each QPU's
+status, in-window flag and queue depth live.
 
 | Backend | Cost | Status |
 |---|---|---|
 | `default.qubit` (PennyLane local) | free | working |
 | `lightning.qubit` (PennyLane C++ local) | free | working |
-| `braket.local.qubit` (Braket local sim) | free | working (forward/inference only — see local-sims note) |
+| `braket.local.qubit` (Braket local sim) | free | working (training via per-input expansion — see local-sims note) |
 | `braket.aws.qubit` → SV1 / DM1 | ~$0.075/min | gated by `--max-cost-usd` |
 | `braket.aws.qubit` → Rigetti Cepheus-1-108Q | ~$0.000425/shot + $0.30/task | gated, manual confirm |
 | `braket.aws.qubit` → IQM Garnet | ~$0.00145/shot + $0.30/task | gated, manual confirm |
@@ -45,14 +48,37 @@ catalog module header for the change log.
 2. Every quantum run is paired with a same-parameter-count classical baseline in
    the same `RunRecord`. The table tells the truth.
 3. No "AI-powered" anything. Device picking is a 40-line weighted rubric.
-4. Quantum forward pass uses PennyLane broadcasting, not a Python `for` loop.
+4. Quantum forward pass uses PennyLane broadcasting at the model API, not a
+   Python `for` loop. On finite-shot devices (any Braket device, or a local sim
+   with `shots`) PennyLane cannot differentiate a broadcasted tape
+   (PennyLane #4462, still open at 0.45.1), so `HybridModel` wraps the QNode in
+   `qml.transforms.broadcast_expand`, which splits the batch into one tape per
+   input before execution. On Braket that is one **billed task per input per
+   execution**, and parameter-shift multiplies it: a training step on `B`
+   inputs costs `B × (1 + 2 × P)` tasks with `P = n_qubits + 3·n_layers·n_qubits`
+   (`P = 28` for the reference config). `catalog.estimate_task_count` is that
+   formula and is verified against `qml.Tracker`; the runner records both the
+   estimate and the tracked count in every `RunRecord`.
+
+### Cost reality (reference config, 200 shots)
+
+| run | tasks | SV1 | Rigetti Cepheus | IonQ Forte-1 |
+|---|---|---|---|---|
+| parity, 1 epoch, full batch (204 train / 52 test) | 11,936 | ≈ $45 | ≈ $4,600 | ≈ $194,000 |
+| parity, 30 epochs (roadmap reference) | 356,572 | ≈ $1,337 | ≈ $137,000 | — |
+| one gradient step, 1 input | 60 | $0.23 | ≈ $23 | ≈ $978 |
+
+The $0.30 per-task fee dominates on QPUs. End-to-end training on hardware at
+this batch size is not something this project will buy; see `ROADMAP.md`
+Phase 4 for the re-scoped question.
 
 ## Quickstart
 
 ```powershell
+# Python 3.10–3.13. 3.13 gets PennyLane >= 0.43; 3.10 is capped at 0.42.3.
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -e .[dev]
+pip install -e .[dev,braket]
 
 # Free local run
 python -m qmlsurvey.runner --backend default.qubit --task parity --epochs 30
@@ -88,9 +114,12 @@ python scripts/run_phase0.py
 See [pyproject.toml](pyproject.toml) for deps. Code lives in `src/qmlsurvey/`,
 per-backend integration notes live in `docs/integration-notes/`, every run
 writes a JSON to `results/`. The `RunRecord` schema is versioned via
-`qmlsurvey.RUNRECORD_SCHEMA_VERSION` (currently `2`). v2 is additive over v1
+`qmlsurvey.RUNRECORD_SCHEMA_VERSION` (currently `3`). v2 is additive over v1
 and adds per-epoch trace, test-set predictions, circuit fingerprint, init
-hashes, and git / hardware / billing metadata.
+hashes, and git / hardware / billing metadata. v3 is additive over v2 and adds
+`estimated_tasks`, `broadcast_expanded`, a pre-submission `device_snapshot`
+(status, availability, queue depth, execution windows) and `device_executions`
+(`qml.Tracker` totals, to reconcile against the estimate and the bill).
 
 `scripts/build_hf_dataset.py` flattens `results/**/*.json` into JSONL splits
 (`runs` / `epochs` / `predictions`) under `datasets/qml-hardware-survey/data/`

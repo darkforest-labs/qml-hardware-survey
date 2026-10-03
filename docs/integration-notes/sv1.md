@@ -86,3 +86,21 @@ discipline, do **not** raise caps to compensate — fix the estimator.
 ## Spend
 
 - This call: **$0.0075**. Phase-2 cumulative: **$0.0075** of the $1.00 cap.
+
+## Update 2026-10-03 — training path now reachable, and what it would cost
+
+- PL #4462 is **still open** at `pennylane==0.45.1` / plugin `1.35.2`. The
+  "wait for a fix" option did not pan out.
+- `HybridModel` now wraps the QNode in `qml.transforms.broadcast_expand` on any
+  finite-shot device (see `local-sims.md`, 2026-10-03). Training through the
+  Braket plugin is therefore expected to work on SV1 — **inferred from
+  `braket.local.qubit`, still not paid-to-confirm here.**
+- The task fan-out is now predicted exactly by `catalog.estimate_task_count`:
+  `B × (1 + 2 × 28)` tasks per training step on `B` inputs, plus `B + B_test`
+  for the eval pass. At SV1's 3 s minimum per task ($0.00375), the parity
+  reference config (204 / 52, 30 epochs) is **356,572 tasks ≈ $1,337**, far
+  above every cap in `ROADMAP.md`. One epoch is ≈ $45. A 2-input, 1-epoch
+  micro-run is 120 tasks ≈ $0.45 and is the proposed next paid call.
+- Open question that call would settle: whether SV1 bills each parameter-shift
+  task at the 3 s minimum (expected) or batches them (the plugin submits them
+  as separate tasks, so no).

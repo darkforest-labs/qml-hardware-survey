@@ -44,11 +44,12 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 
 - [x] Document AWS setup in `docs/integration-notes/aws-setup.md`: account, region enable, S3 results bucket, IAM policy, `aws configure sso` or access keys, Braket service activation. *(Corrected 2026-06: the results bucket name must start with `amazon-braket-`.)*
 - [x] Add a `qmlsurvey doctor` subcommand (or `scripts/doctor.py`) that checks: boto3 importable, plugin importable, Braket-visible devices, S3 bucket writable, current AWS region. Run before *any* paid call. *(All checks PASS against a live account; see `aws-setup.md` §8.)*
-- [~] **First paid call**: ~~1 epoch of parity on **`sv1`**~~ — done as a **forward/inference-only** call (2 inputs, shots=100). The broadcasted *training* path routes gradients through parameter-shift, which fails on broadcasted params (PL #4462) — confirmed on `braket.local.qubit`, inferred (not paid-to-confirm) on `sv1`. Call returned a JSON; billed $0.0075 (2 tasks × 3 s minimum) vs $0.00375 estimated. See `docs/integration-notes/sv1.md`.
-- [ ] ~~One full reference-config run on `sv1` for each of the three tasks.~~ Cloud-sim *training* via the current broadcasted path is not reachable (PL #4462; confirmed on local-sim, inferred on cloud) — only inference. Re-scope to "forward trained-elsewhere weights on `sv1`" (Phase-3 pattern) or wait for a PennyLane with the fix.
-- [ ] One run on `dm1` with a deliberately injected noise model — substrate for predicting what QPUs will do. *(Forward-only; same #4462 constraint applies to training.)*
+- [x] **First paid call**: done as a **forward/inference-only** call on `sv1` (2 inputs, shots=100). Billed $0.0075 (2 tasks × 3 s minimum) vs $0.00375 estimated; estimator since fixed to count tasks. See `docs/integration-notes/sv1.md`.
+- [x] **Unblock finite-shot training (2026-10-03).** PL #4462 is still open at PennyLane 0.45.1, but wrapping the QNode in `qml.transforms.broadcast_expand` makes `loss.backward()` work on `braket.local.qubit` and finite-shot `default.qubit`. Wired into `HybridModel` for any finite-shot device; `catalog.estimate_task_count` predicts the task fan-out exactly (verified with `qml.Tracker`: 23,820 estimated = 23,820 executed for 2 epochs of parity). Cost consequence: the reference config costs ≈ $1,337 on SV1 (356,572 tasks) — see README "Cost reality".
+- [ ] ~~One full reference-config run on `sv1` for each of the three tasks.~~ Unaffordable (above). Re-scoped: **one micro-training run on `sv1`** — parity, 2 train / 2 test inputs, 1 epoch ≈ 120 tasks ≈ $0.45 — to confirm the fan-out and the 3 s minimum billing hold for gradient tasks. Needs a `--n-train-subset` option in the runner first.
+- [ ] One forward run on `dm1` with a deliberately injected noise model — substrate for predicting what QPUs will do. Inference-only (few tasks).
 
-**Exit:** `docs/integration-notes/sv1.md` populated with billed-vs-estimated table ✅; `dm1.md` pending; `doctor` script committed ✅. **Phase-2 spend so far: $0.0075 of the $1.00 cap.**
+**Exit:** `docs/integration-notes/sv1.md` populated with billed-vs-estimated table ✅; `dm1.md` pending; `doctor` script committed ✅ (now also reports QPU windows / queue). **Phase-2 spend so far: $0.0075 of the $1.00 cap.**
 
 **Hard cap:** $1 cumulative across this phase. If exceeded, stop and inspect the cost model in `catalog.estimate_cost_usd` — its `estimated_runtime_minutes=0.05` default is almost certainly wrong for real workloads.
 
@@ -61,7 +62,9 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 - [ ] Pick **Rigetti Cepheus-1-108Q** ($0.000425/shot + $0.30/task) — cheapest per-shot (replaced Ankaa-3 on 2026-04-07).
 - [ ] Workflow: train on `default.qubit` to convergence on parity, then run *forward pass only* on QPU with the trained weights. Compare QPU-Z-expectations to simulator-Z-expectations sample-by-sample. Isolates "circuit fidelity" from "training under noise."
 - [ ] Shots: 200. Estimated cost ~$0.39 (200 × $0.000425 + $0.30). Cap: `--max-cost-usd 1.00`.
-- [ ] Capture queue wait time separately from circuit wall-time in `RunRecord` (new fields: `queue_wait_s`, `device_runtime_s`).
+- [ ] Capture queue wait time separately from circuit wall-time in `RunRecord` (fields `queue_wait_s`, `device_runtime_s` exist in `TrainStats`; not yet populated from Braket task metadata).
+- [x] Record a pre-submission **device snapshot** (status, `is_available`, queue depth, UTC execution windows) in every `RunRecord` (`backends.device_snapshot`, schema v3). Submit inside the window: on 2026-10-03 Cepheus runs daily with gaps 07–09 and 19–21 UTC, IQM Garnet/Emerald weekdays only, AQT Ibex-Q1 four weekday windows, IonQ Forte near-24/7. rydberg-playground saw a 4-day wait on Aquila from submitting just after a window closed.
+- [ ] Borrow rydberg-playground's submit → manifest → fetch pattern (task ARNs written after every submission; results fetched only when all tasks are terminal) so a crash mid-run never loses paid tasks. The PennyLane plugin hides task handles, so this may need the Braket SDK directly for Phase 3 forward passes.
 - [ ] Repeat once on **IQM Garnet** ($0.00145/shot, EU region) and once on **IonQ Forte-1** ($0.08/shot, slow but high fidelity). Three integration notes.
 
 **Exit:** three `docs/integration-notes/{rigetti_cepheus,iqm_garnet,ionq_forte_1}.md` files with billed cost, queue time, expectation-value agreement vs simulator, and any errors hit. SUMMARY.md updated.
@@ -75,13 +78,14 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` ski
 **Goal:** answer "can the hybrid model train end-to-end against a QPU at all?" — not "is it good."
 
 - [ ] Pick the *single* (backend, task) pair with the best Phase-3 fidelity. Almost certainly `rigetti_cepheus × parity`.
-- [ ] Run **5 epochs** with shots=200, full QPU in the loop. Cost estimate: ~5 × ($0.085 + $0.30) ≈ $1.93 plus queue overhead.
+- [ ] ~~Run **5 epochs** with shots=200, full QPU in the loop. Cost estimate: ~5 × ($0.085 + $0.30) ≈ $1.93 plus queue overhead.~~ That estimate assumed one task per epoch. With parameter-shift the real fan-out is `B × (1 + 2P)` tasks per step (P = 28): one epoch on the full parity batch is ≈ $4,600 on Cepheus, and **one gradient step on one input is 60 tasks ≈ $23**. Re-scoped question (2026-10-03): *does a single parameter-shift gradient computed on the QPU point the same way as the simulator's?* One input, one step, shots=200, compare the 56-entry gradient vector to `default.qubit` at the same shots and to analytic. Fits the cap once; do not repeat.
+- [ ] Alternative within budget: train end-to-end on **SV1** with a 2-input micro-batch (≈ $0.45/epoch) to show the hybrid loop closes on a cloud device at all; keep QPU for the single-step comparison above.
 - [ ] Compare against (a) same model trained on `default.qubit` with shots=200 (shot-noise-only), (b) same model trained noise-free, (c) parameter-matched MLP. Already automatic via `MatchedMLP` for (c); add (a) and (b) as additional records with a shared `experiment_group` field.
 - [ ] If gradients are dominated by shot noise (very likely), document it. Don't grind epochs hoping it converges; that's burning money to confirm a known phenomenon.
 
 **Exit:** one honest `docs/integration-notes/training-on-qpu.md` saying what worked, what didn't, and what it cost.
 
-**Hard cap:** $25 cumulative across the project to date.
+**Hard cap:** $25 cumulative across the project to date. The single-step QPU run above consumes almost all of it; confirm before submitting.
 
 ---
 
