@@ -27,9 +27,9 @@ import torch
 from torch import nn
 
 from . import RUNRECORD_SCHEMA_VERSION, __version__
-from .backends import describe, get_device
+from .backends import describe, device_snapshot, get_device
 from .baselines import MatchedMLP
-from .catalog import estimate_cost_usd
+from .catalog import estimate_cost_usd, estimate_task_count
 from .model import HybridModel
 from .tasks import TASKS
 
@@ -105,6 +105,18 @@ class RunRecord:
     predictions: dict[str, dict[str, Any]] = field(default_factory=dict)
     # billing populated only when backend_kind in {cloud_sim, qpu}; otherwise {}.
     billing: dict[str, Any] = field(default_factory=dict)
+    # v3 additive blocks.
+    # estimated_tasks: catalog.estimate_task_count for this run (what the cost
+    # estimate was based on). broadcast_expanded: True when the model split the
+    # batch per input (finite-shot devices; see model.py).
+    estimated_tasks: int = 0
+    broadcast_expanded: bool = False
+    # device_snapshot: backends.device_snapshot taken *before* submission
+    # (status, is_available, queue depth, execution windows). {} for local sims.
+    device_snapshot: dict[str, Any] = field(default_factory=dict)
+    # device_executions: qml.Tracker totals over the quantum model's training +
+    # predictions ({executions, shots, ...}). Compare with estimated_tasks.
+    device_executions: dict[str, Any] = field(default_factory=dict)
 
     def write(self, out_dir: Path = RESULTS_DIR) -> Path:
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -168,16 +180,28 @@ def _hardware_info() -> dict[str, Any]:
 def _circuit_fingerprint(qmodel: HybridModel, sample_input: torch.Tensor) -> dict[str, Any]:
     """Capture gate counts + depth via qml.specs. Returns {} on failure."""
     try:
-        specs_fn = qml.specs(qmodel._circuit)
+        specs_fn = qml.specs(qmodel._qnode)
         specs = specs_fn(sample_input, qmodel.quantum_weights)
-        # The shape of `specs` varies across PennyLane releases. Be defensive
-        # and only pull the fields we care about; coerce numerics to plain int.
-        resources = specs.get("resources") if isinstance(specs, dict) else None
+        # The shape of `specs` varies across PennyLane releases: a dict with a
+        # "resources" entry (<=0.42) or a CircuitSpecs dataclass whose
+        # `.resources` exposes gate_counts/depth/num_gates (>=0.43). Be defensive.
+        resources = (
+            specs.get("resources") if isinstance(specs, dict)
+            else getattr(specs, "resources", None)
+        )
         if resources is not None:
-            gate_types = getattr(resources, "gate_types", {}) or {}
+            gate_types = (
+                getattr(resources, "gate_counts", None)
+                or getattr(resources, "gate_types", None)
+                or {}
+            )
             depth = int(getattr(resources, "depth", 0) or 0)
             num_gates = int(getattr(resources, "num_gates", 0) or 0)
-            num_wires = int(getattr(resources, "num_wires", qmodel.n_qubits))
+            num_wires = int(
+                getattr(resources, "num_wires", None)
+                or getattr(specs, "num_device_wires", None)
+                or qmodel.n_qubits
+            )
         else:
             gate_types = specs.get("gate_types", {}) if isinstance(specs, dict) else {}
             depth = int(specs.get("depth", 0)) if isinstance(specs, dict) else 0
@@ -191,6 +215,7 @@ def _circuit_fingerprint(qmodel: HybridModel, sample_input: torch.Tensor) -> dic
             "n_circuit_params": int(qmodel.quantum_weights.numel()),
             "interface": "torch",
             "diff_method": "best",
+            "broadcast_expanded": bool(qmodel.broadcast_expanded),
         }
     except Exception as e:  # noqa: BLE001 — fingerprint is best-effort.
         return {"error": f"{type(e).__name__}: {e}"}
@@ -266,18 +291,32 @@ def _train(
     )
 
 
-def _confirm_cost(backend: str, est_cost: float, max_cost: float, assume_yes: bool) -> None:
+def _confirm_cost(
+    backend: str,
+    est_cost: float,
+    max_cost: float,
+    assume_yes: bool,
+    n_tasks: int = 1,
+    snapshot: dict[str, Any] | None = None,
+) -> None:
     info = describe(backend)
     if info.kind == "local_sim":
         return
     if est_cost > max_cost:
         sys.exit(
-            f"Estimated cost ${est_cost:.4f} exceeds --max-cost-usd ${max_cost:.4f}. Aborting."
+            f"Estimated cost ${est_cost:.4f} ({n_tasks} tasks) exceeds --max-cost-usd "
+            f"${max_cost:.4f}. Aborting. Reduce epochs / batch, not the cap."
         )
     if assume_yes:
         return
+    snap = snapshot or {}
+    avail = snap.get("is_available")
+    avail_s = "unknown" if avail is None else ("yes" if avail else "NO — will queue to next window")
     print(
         f"\nBackend       : {info.name} ({info.kind})\n"
+        f"Device status : {snap.get('status', 'unknown')}, available now: {avail_s}\n"
+        f"Queue depth   : {snap.get('queue_depth', 'unknown')}\n"
+        f"Est. tasks    : {n_tasks}\n"
         f"Estimated cost: ${est_cost:.4f}\n"
         f"Cost cap      : ${max_cost:.4f}\n"
     )
@@ -308,8 +347,16 @@ def run(
     Xtr, ytr, Xte, yte, meta = TASKS[task].load(seed=seed)
 
     info = describe(backend)
-    est_cost = estimate_cost_usd(backend, shots or 0)
-    _confirm_cost(backend, est_cost, max_cost_usd, assume_yes)
+    n_tasks = estimate_task_count(
+        n_train=int(meta.get("n_train", len(Xtr))),
+        n_test=int(meta.get("n_test", len(Xte))),
+        n_qubits=n_qubits,
+        n_layers=n_layers,
+        epochs=epochs,
+    )
+    est_cost = estimate_cost_usd(backend, shots or 0, n_tasks=n_tasks)
+    snapshot = device_snapshot(backend)  # {} for local sims; free otherwise.
+    _confirm_cost(backend, est_cost, max_cost_usd, assume_yes, n_tasks=n_tasks, snapshot=snapshot)
 
     device = get_device(backend, wires=n_qubits, shots=shots)
     qmodel = HybridModel(
@@ -319,15 +366,33 @@ def run(
         n_layers=n_layers,
         device=device,
     )
-    print(f"Quantum model parameters: {qmodel.n_total_params}")
+    print(
+        f"Quantum model parameters: {qmodel.n_total_params} "
+        f"(broadcast_expanded={qmodel.broadcast_expanded}, est. device tasks={n_tasks})"
+    )
     qinit_hash = _param_sha256(qmodel)
     fingerprint = _circuit_fingerprint(qmodel, Xtr[:1])
-    qstats = _train(qmodel, Xtr, ytr, Xte, yte, epochs=epochs, lr=lr)
+    try:
+        tracker = qml.Tracker(device)
+    except Exception:  # noqa: BLE001 — tracking is best-effort.
+        tracker = None
+    if tracker is not None:
+        with tracker:
+            qstats = _train(qmodel, Xtr, ytr, Xte, yte, epochs=epochs, lr=lr)
+            qpreds = _predictions_block(qmodel, Xte, yte)
+        executions = {
+            k: (int(v) if isinstance(v, (int, float)) else v)
+            for k, v in tracker.totals.items()
+            if k in ("executions", "shots", "batches", "simulations")
+        }
+    else:
+        qstats = _train(qmodel, Xtr, ytr, Xte, yte, epochs=epochs, lr=lr)
+        qpreds = _predictions_block(qmodel, Xte, yte)
+        executions = {}
     print(
         f"Quantum  : test={qstats.final_test_acc:.3f} best={qstats.best_test_acc:.3f} "
-        f"time={qstats.wall_time_s:.2f}s"
+        f"time={qstats.wall_time_s:.2f}s executions={executions.get('executions', '?')}"
     )
-    qpreds = _predictions_block(qmodel, Xte, yte)
 
     cmodel = MatchedMLP(meta["in_features"], meta["out_features"], qmodel.n_total_params)
     cinit_hash = _param_sha256(cmodel)
@@ -337,6 +402,15 @@ def run(
         f"time={cstats.wall_time_s:.2f}s  (params={cmodel.n_total_params}, hidden={cmodel.hidden})"
     )
     cpreds = _predictions_block(cmodel, Xte, yte)
+
+    # Fail loudly in the log if the estimator drifted from reality; a Braket
+    # bill is the alternative. Analytic local sims legitimately execute far
+    # fewer tapes (one broadcasted tape per call), so only check expanded runs.
+    if qmodel.broadcast_expanded and executions.get("executions") not in (None, n_tasks):
+        print(
+            f"WARNING: estimated {n_tasks} device tasks but tracker counted "
+            f"{executions['executions']}. Check catalog.estimate_task_count."
+        )
 
     record = RunRecord(
         schema_version=RUNRECORD_SCHEMA_VERSION,
@@ -369,6 +443,10 @@ def run(
         init_params_sha256={"quantum": qinit_hash, "classical": cinit_hash},
         predictions={"quantum": qpreds, "classical": cpreds},
         billing={},  # populated by AWS-aware callers post-run
+        estimated_tasks=n_tasks,
+        broadcast_expanded=qmodel.broadcast_expanded,
+        device_snapshot=snapshot,
+        device_executions=executions,
     )
     out = record.write(out_dir=out_dir or RESULTS_DIR)
     try:

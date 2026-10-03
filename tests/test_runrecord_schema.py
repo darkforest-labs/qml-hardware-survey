@@ -41,7 +41,7 @@ def _make_record() -> RunRecord:
 
 
 def test_schema_version_pinned():
-    assert RUNRECORD_SCHEMA_VERSION == 2
+    assert RUNRECORD_SCHEMA_VERSION == 3
 
 
 def test_record_round_trips_through_json(tmp_path: Path):
@@ -52,6 +52,9 @@ def test_record_round_trips_through_json(tmp_path: Path):
     assert payload["schema_version"] == RUNRECORD_SCHEMA_VERSION
     assert payload["quantum"]["queue_wait_s"] == 0.0
     assert payload["experiment_group"] == ""
+    # v3 additive blocks default to empty.
+    assert payload["device_snapshot"] == {}
+    assert payload["device_executions"] == {}
     # Round-trip equality (modulo dataclass <-> dict).
     assert payload == asdict(record)
 

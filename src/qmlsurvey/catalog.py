@@ -7,9 +7,20 @@ estimate costs and gate operations without a network round-trip.
 
 Update as AWS changes pricing or device availability.
 
-Snapshot as of 2026-06-19. Sources: AWS Braket pricing page
-(<https://aws.amazon.com/braket/pricing/>) and the supported-devices doc
-(<https://docs.aws.amazon.com/braket/latest/developerguide/braket-devices.html>).
+Snapshot as of 2026-10-03. Sources: AWS Braket pricing page
+(<https://aws.amazon.com/braket/pricing/>), the supported-devices doc
+(<https://docs.aws.amazon.com/braket/latest/developerguide/braket-devices.html>),
+and a live ``search_devices`` + ``AwsDevice.properties`` sweep over all five
+Braket regions on 2026-10-03.
+Notable changes since the 2026-06 snapshot:
+  - TN1 (tensor-network simulator) is RETIRED in every region; dropped.
+  - Cepheus-1-108Q reports ``qubitCount=107`` via the API (108 nominal).
+  - IonQ Forte-1 is back ONLINE alongside Forte-Enterprise-1.
+  - Per-shot prices unchanged for every in-catalog QPU.
+  - Every QPU publishes UTC *execution windows*
+    (``properties.service.executionWindows``); outside them ``is_available``
+    is False and tasks queue until the next window. ``backends.device_snapshot``
+    fetches these live; do not hand-copy them here.
 Notable changes since the 2026-04 snapshot:
   - IonQ Aria-1 retired from Braket; current IonQ QPU is Forte-1
     (also Forte-Enterprise-1), $0.08/shot.
@@ -85,23 +96,13 @@ CATALOG: dict[str, BackendInfo] = {
         region="all",
         notes="Density matrix simulator (noise modelling).",
     ),
-    "tn1": BackendInfo(
-        name="tn1",
-        kind="cloud_sim",
-        arn="arn:aws:braket:::device/quantum-simulator/amazon/tn1",
-        qubits=50,
-        cost_per_minute_usd=0.275,
-        region="all",
-        notes="Tensor network simulator. Per-minute rate retained from the "
-        "2026-04 snapshot; not separately tabulated on the 2026-06 pricing page.",
-    ),
     # ---- QPUs (gate-based, in-scope) ----
     # Ordered cheapest -> most expensive per shot. All carry a $0.30 per-task fee.
     "rigetti_cepheus": BackendInfo(
         name="rigetti_cepheus",
         kind="qpu",
         arn="arn:aws:braket:us-west-1::device/qpu/rigetti/Cepheus-1-108Q",
-        qubits=108,
+        qubits=107,  # API reports 107 usable of 108 nominal (2026-10-03)
         cost_per_shot_usd=0.000425,
         per_task_fee_usd=0.30,
         region="us-west-1",
@@ -148,8 +149,9 @@ CATALOG: dict[str, BackendInfo] = {
         per_task_fee_usd=0.30,
         region="us-east-1",
         notes="Trapped ion, all-to-all connectivity. Replaces Aria-1 (retired). "
-        "At the 2026-06-19 snapshot Forte-1 was OFFLINE and Forte-Enterprise-1 "
-        "(.../qpu/ionq/Forte-Enterprise-1) was ONLINE at the same per-shot price.",
+        "ONLINE on 2026-10-03 (was OFFLINE at the 2026-06 snapshot). "
+        "Forte-Enterprise-1 (.../qpu/ionq/Forte-Enterprise-1) is a sibling at "
+        "the same per-shot price with a near-24/7 execution window.",
     ),
 }
 
@@ -189,6 +191,33 @@ def estimate_cost_usd(
         per_task_minutes = max(CLOUD_SIM_MIN_TASK_MINUTES, estimated_runtime_minutes)
         return info.cost_per_minute_usd * per_task_minutes * n_tasks
     return 0.0
+
+
+def estimate_task_count(
+    n_train: int,
+    n_test: int,
+    n_qubits: int,
+    n_layers: int,
+    epochs: int,
+) -> int:
+    """Device executions (= Braket tasks) a ``runner.run`` training job submits.
+
+    Assumes the finite-shot path, where ``HybridModel`` expands the batch into
+    one tape per input (see ``model.py``). Per epoch, ``runner._train`` does:
+
+    - one forward + parameter-shift backward on the train set:
+      ``n_train x (1 + 2 x P)`` with ``P = n_qubits + 3 x n_layers x n_qubits``
+    - one no-grad eval pass over train and test: ``n_train + n_test``
+
+    plus a final predictions pass over the test set (``n_test``). Verified
+    exactly against ``qml.Tracker`` on ``default.qubit`` and
+    ``braket.local.qubit`` at shots=200 (2026-10-03). Analytic local
+    simulators execute the broadcasted tape once per call instead, but they
+    are free, so the over-count is harmless there.
+    """
+    p = n_qubits + 3 * n_layers * n_qubits
+    per_epoch = n_train * (1 + 2 * p) + n_train + n_test
+    return epochs * per_epoch + n_test
 
 
 def list_backends(kind: DeviceKind | None = None) -> list[BackendInfo]:

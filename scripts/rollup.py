@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = ROOT / "results"
 OUT_PATH = RESULTS_DIR / "SUMMARY.md"
 
-SUPPORTED_SCHEMA = {1, 2}
+SUPPORTED_SCHEMA = {1, 2, 3}
 
 
 def _load_all() -> list[tuple[Path, dict]]:
