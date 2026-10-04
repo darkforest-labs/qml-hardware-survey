@@ -6,6 +6,9 @@ gating). Three groups are currently understood:
 - ``phase1-cross-sim``    — one ``RunRecord`` per file (cross-sim matrix).
 - ``phase1-shot-noise``   — one summary file with a ``cells`` list.
 - ``phase1-trainability`` — one summary file with a ``cells`` list.
+- ``phase2-*`` (any group starting with ``phase2``) — one ``RunRecord`` per
+  file from a Braket cloud simulator or QPU; tabulated with estimated vs
+  tracked tasks and estimated vs billed cost.
 
 Anything else with a recognised ``schema_version`` but unknown group is
 listed as "unrecognised" with its path and group, so new result kinds show
@@ -99,6 +102,57 @@ def _cross_sim_section(records: list[dict]) -> str:
     return _md_table(headers, rows)
 
 
+def _cloud_section(records: list[dict]) -> str:
+    """Paid runs: what we predicted vs what the device executed and AWS billed."""
+    records_sorted = sorted(records, key=lambda r: r.get("timestamp_utc", ""))
+    headers = [
+        "timestamp_utc",
+        "backend",
+        "task",
+        "n_train/n_test",
+        "epochs",
+        "shots",
+        "est_tasks",
+        "executed",
+        "est_cost_usd",
+        "billed_usd",
+        "billed_s",
+        "q_test_acc",
+        "cls_test_acc",
+        "avail_at_submit",
+    ]
+    rows = []
+    for r in records_sorted:
+        q = r.get("quantum", {}) or {}
+        c = r.get("classical_baseline", {}) or {}
+        b = r.get("billing", {}) or {}
+        ex = r.get("device_executions", {}) or {}
+        snap = r.get("device_snapshot", {}) or {}
+        stats = b.get("quantum_tasks_statistics", {}) or {}
+        billed_s = None
+        for st in stats.values():
+            billed_s = (billed_s or 0.0) + float(st.get("billed_execution_duration_s", 0.0))
+        rows.append(
+            [
+                str(r.get("timestamp_utc", "—")),
+                str(r.get("backend", "—")),
+                str(r.get("task", "—")),
+                f"{r.get('n_train', '—')}/{r.get('n_test', '—')}",
+                _fmt(r.get("epochs")),
+                _fmt(r.get("shots")),
+                _fmt(r.get("estimated_tasks")),
+                _fmt(ex.get("executions")),
+                _fmt(r.get("estimated_cost_usd"), "acc"),
+                _fmt(b.get("billed_cost_usd"), "acc"),
+                _fmt(billed_s, "wall"),
+                _fmt(q.get("final_test_acc"), "acc"),
+                _fmt(c.get("final_test_acc"), "acc"),
+                str(snap.get("is_available", "—")),
+            ]
+        )
+    return _md_table(headers, rows)
+
+
 def _shot_noise_section(summary: dict) -> str:
     ref = summary.get("reference", {}) or {}
     head = (
@@ -165,6 +219,7 @@ def main() -> None:
     shot_noise: list[tuple[Path, dict]] = []
     trainability: list[tuple[Path, dict]] = []
     phase0: list[dict] = []
+    cloud: list[dict] = []
     other: list[tuple[Path, dict]] = []
 
     for p, d in items:
@@ -186,6 +241,8 @@ def main() -> None:
             trainability.append((p, d))
         elif group == "phase0-reference":
             phase0.append(d)
+        elif isinstance(group, str) and group.startswith("phase2"):
+            cloud.append(d)
         else:
             other.append((p, d))
 
@@ -225,6 +282,19 @@ def main() -> None:
             "",
         ]
 
+    if cloud:
+        lines += [
+            "## Phase 2 — Braket cloud runs (paid)",
+            "",
+            "Estimated vs executed task counts and estimated vs billed cost, per run. "
+            "`billed_s` is AWS's billed execution duration (3 s minimum per task on "
+            "the on-demand simulators). `avail_at_submit` is the device's "
+            "`is_available` flag when the run started.",
+            "",
+            _cloud_section(cloud),
+            "",
+        ]
+
     if other:
         lines += ["## Unrecognised result files", ""]
         for p, d in other:
@@ -238,7 +308,7 @@ def main() -> None:
     OUT_PATH.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {OUT_PATH.relative_to(ROOT).as_posix()}")
     print(
-        f"  cross_sim records: {len(cross_sim)}  "
+        f"  cloud records: {len(cloud)}  cross_sim records: {len(cross_sim)}  "
         f"shot_noise files: {len(shot_noise)}  "
         f"trainability files: {len(trainability)}  "
         f"phase0 records: {len(phase0)}  "

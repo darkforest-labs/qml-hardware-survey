@@ -83,3 +83,22 @@ def test_reference_run_cost_is_large_on_hardware():
     assert n_tasks == n_tr * (1 + 2 * 28) + n_tr + n_te + n_te
     # One epoch on the cheapest QPU at 200 shots is already thousands of dollars.
     assert estimate_cost_usd("rigetti_cepheus", shots=200, n_tasks=n_tasks) > 1000.0
+
+
+def test_subset_option_shrinks_split_and_task_estimate(tmp_path):
+    from qmlsurvey.runner import run
+
+    rec = run(
+        backend="default.qubit",
+        task="parity",
+        epochs=1,
+        shots=None,
+        seed=0,
+        assume_yes=True,
+        out_dir=tmp_path,
+        n_train_subset=2,
+        n_test_subset=2,
+    )
+    assert (rec.n_train, rec.n_test) == (2, 2)
+    assert rec.estimated_tasks == estimate_task_count(2, 2, 4, 2, epochs=1) == 120
+    assert len(rec.predictions["quantum"]["y_true"]) == 2

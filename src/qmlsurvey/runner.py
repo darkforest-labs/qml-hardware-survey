@@ -111,6 +111,9 @@ class RunRecord:
     # batch per input (finite-shot devices; see model.py).
     estimated_tasks: int = 0
     broadcast_expanded: bool = False
+    # Actual split sizes used (after any --n-train-subset / --n-test-subset).
+    n_train: int = 0
+    n_test: int = 0
     # device_snapshot: backends.device_snapshot taken *before* submission
     # (status, is_available, queue depth, execution windows). {} for local sims.
     device_snapshot: dict[str, Any] = field(default_factory=dict)
@@ -291,6 +294,36 @@ def _train(
     )
 
 
+def _braket_billing(tracker, est_cost: float) -> dict[str, Any]:
+    """Serialise a braket.tracking.Tracker into the RunRecord billing block."""
+    out: dict[str, Any] = {"estimated_cost_usd": float(est_cost)}
+    try:
+        stats = tracker.quantum_tasks_statistics()
+        per_device: dict[str, Any] = {}
+        for arn, st in stats.items():
+            row: dict[str, Any] = {}
+            for k, v in st.items():
+                if hasattr(v, "total_seconds"):
+                    row[f"{k}_s"] = float(v.total_seconds())
+                elif isinstance(v, dict):
+                    row[k] = {str(kk): int(vv) for kk, vv in v.items()}
+                else:
+                    row[k] = v
+            per_device[arn] = row
+        out["quantum_tasks_statistics"] = per_device
+        sim = tracker.simulator_tasks_cost()
+        qpu = tracker.qpu_tasks_cost()
+        out["simulator_tasks_cost_usd"] = float(sim)
+        out["qpu_tasks_cost_usd"] = float(qpu)
+        out["billed_cost_usd"] = float(sim + qpu)
+        out["billed_over_estimated"] = (
+            float(sim + qpu) / float(est_cost) if est_cost else None
+        )
+    except Exception as e:  # noqa: BLE001 — never lose the run over the bill.
+        out["error"] = repr(e)
+    return out
+
+
 def _confirm_cost(
     backend: str,
     est_cost: float,
@@ -339,17 +372,28 @@ def run(
     notes: str = "",
     experiment_group: str = "",
     out_dir: Path | None = None,
+    n_train_subset: int | None = None,
+    n_test_subset: int | None = None,
 ) -> RunRecord:
     if task not in TASKS:
         raise SystemExit(f"Unknown task {task!r}. Available: {sorted(TASKS)}")
     torch.manual_seed(seed)
 
     Xtr, ytr, Xte, yte, meta = TASKS[task].load(seed=seed)
+    # Optional micro-batch: keep the first k samples of each split. The task
+    # loaders are seeded, so this is deterministic. Exists so that a paid
+    # cloud/QPU run can be made small enough to afford (see README "Cost
+    # reality"); it changes the experiment, and the record says so.
+    if n_train_subset is not None:
+        Xtr, ytr = Xtr[:n_train_subset], ytr[:n_train_subset]
+    if n_test_subset is not None:
+        Xte, yte = Xte[:n_test_subset], yte[:n_test_subset]
+    n_train, n_test = int(len(Xtr)), int(len(Xte))
 
     info = describe(backend)
     n_tasks = estimate_task_count(
-        n_train=int(meta.get("n_train", len(Xtr))),
-        n_test=int(meta.get("n_test", len(Xte))),
+        n_train=n_train,
+        n_test=n_test,
         n_qubits=n_qubits,
         n_layers=n_layers,
         epochs=epochs,
@@ -376,19 +420,40 @@ def run(
         tracker = qml.Tracker(device)
     except Exception:  # noqa: BLE001 — tracking is best-effort.
         tracker = None
-    if tracker is not None:
-        with tracker:
+    # On Braket cloud devices also capture what AWS will actually bill.
+    bill_tracker = None
+    if info.kind in ("cloud_sim", "qpu"):
+        try:
+            from braket.tracking import Tracker as BraketTracker
+
+            bill_tracker = BraketTracker()
+        except Exception:  # noqa: BLE001 — optional dependency.
+            bill_tracker = None
+    if bill_tracker is not None:
+        bill_tracker.start()
+    try:
+        if tracker is not None:
+            with tracker:
+                qstats = _train(qmodel, Xtr, ytr, Xte, yte, epochs=epochs, lr=lr)
+                qpreds = _predictions_block(qmodel, Xte, yte)
+            executions = {
+                k: (int(v) if isinstance(v, (int, float)) else v)
+                for k, v in tracker.totals.items()
+                if k in ("executions", "shots", "batches", "simulations")
+            }
+        else:
             qstats = _train(qmodel, Xtr, ytr, Xte, yte, epochs=epochs, lr=lr)
             qpreds = _predictions_block(qmodel, Xte, yte)
-        executions = {
-            k: (int(v) if isinstance(v, (int, float)) else v)
-            for k, v in tracker.totals.items()
-            if k in ("executions", "shots", "batches", "simulations")
-        }
-    else:
-        qstats = _train(qmodel, Xtr, ytr, Xte, yte, epochs=epochs, lr=lr)
-        qpreds = _predictions_block(qmodel, Xte, yte)
-        executions = {}
+            executions = {}
+    finally:
+        if bill_tracker is not None:
+            bill_tracker.stop()
+    billing = _braket_billing(bill_tracker, est_cost) if bill_tracker is not None else {}
+    if billing.get("billed_cost_usd") is not None:
+        print(
+            f"Billed   : ${billing['billed_cost_usd']:.4f} vs estimated ${est_cost:.4f} "
+            f"(x{billing.get('billed_over_estimated') or 0:.2f})"
+        )
     print(
         f"Quantum  : test={qstats.final_test_acc:.3f} best={qstats.best_test_acc:.3f} "
         f"time={qstats.wall_time_s:.2f}s executions={executions.get('executions', '?')}"
@@ -442,9 +507,11 @@ def run(
         circuit_fingerprint=fingerprint,
         init_params_sha256={"quantum": qinit_hash, "classical": cinit_hash},
         predictions={"quantum": qpreds, "classical": cpreds},
-        billing={},  # populated by AWS-aware callers post-run
+        billing=billing,
         estimated_tasks=n_tasks,
         broadcast_expanded=qmodel.broadcast_expanded,
+        n_train=n_train,
+        n_test=n_test,
         device_snapshot=snapshot,
         device_executions=executions,
     )
@@ -471,6 +538,18 @@ def main() -> None:
     p.add_argument("--notes", default="")
     p.add_argument("--experiment-group", default="", help="Optional tag to group related runs.")
     p.add_argument(
+        "--n-train-subset",
+        type=int,
+        default=None,
+        help="Use only the first k training samples (micro-batch for paid runs).",
+    )
+    p.add_argument(
+        "--n-test-subset",
+        type=int,
+        default=None,
+        help="Use only the first k test samples (micro-batch for paid runs).",
+    )
+    p.add_argument(
         "--out-dir",
         type=Path,
         default=None,
@@ -491,6 +570,8 @@ def main() -> None:
         notes=args.notes,
         experiment_group=args.experiment_group,
         out_dir=args.out_dir,
+        n_train_subset=args.n_train_subset,
+        n_test_subset=args.n_test_subset,
     )
 
 

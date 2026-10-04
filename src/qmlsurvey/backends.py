@@ -5,6 +5,8 @@ is talking to.
 """
 from __future__ import annotations
 
+import os
+
 import pennylane as qml
 
 from .catalog import CATALOG, BackendInfo
@@ -41,12 +43,21 @@ def get_device(backend: str, wires: int, shots: int | None = None):
     if info.kind in ("cloud_sim", "qpu"):
         if shots is None:
             raise ValueError(f"{backend} requires explicit shots > 0")
+        kwargs: dict = {}
+        # Results land in S3. If QMLSURVEY_S3_BUCKET is set (see aws-setup.md §3)
+        # use it; otherwise the Braket SDK falls back to its default
+        # amazon-braket-<region>-<account> bucket. Either must start with
+        # `amazon-braket-` (sv1.md finding #1).
+        bucket = os.environ.get("QMLSURVEY_S3_BUCKET")
+        if bucket:
+            kwargs["s3_destination_folder"] = (bucket, f"qmlsurvey/{backend}")
         try:
             return qml.device(
                 "braket.aws.qubit",
                 device_arn=info.arn,
                 wires=wires,
                 shots=shots,
+                **kwargs,
             )
         except qml.DeviceError as e:
             raise BackendUnavailable(
