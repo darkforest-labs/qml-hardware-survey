@@ -85,7 +85,9 @@ discipline, do **not** raise caps to compensate — fix the estimator.
 
 ## Spend
 
-- This call: **$0.0075**. Phase-2 cumulative: **$0.0075** of the $1.00 cap.
+- 2026-06-20 inference call: **$0.0075**.
+- 2026-10-04 micro-training run: **$0.4500**.
+- Phase-2 cumulative: **$0.4575** of the $1.00 cap.
 
 ## Update 2026-10-03 — training path now reachable, and what it would cost
 
@@ -103,4 +105,68 @@ discipline, do **not** raise caps to compensate — fix the estimator.
   micro-run is 120 tasks ≈ $0.45 and is the proposed next paid call.
 - Open question that call would settle: whether SV1 bills each parameter-shift
   task at the 3 s minimum (expected) or batches them (the plugin submits them
-  as separate tasks, so no).
+  as separate tasks, so no). **Settled below: 3 s minimum per task, exactly.**
+
+## Second paid call — 2026-10-04 — first gradient computed on a Braket device
+
+Record: `results/phase2/sv1_micro/2026-10-04T02-04-51+00-00_sv1_parity.json`
+(schema v3, `experiment_group=phase2-sv1-micro`). Reproduce with:
+
+```powershell
+$env:QMLSURVEY_S3_BUCKET = "amazon-braket-qmlsurvey-<account-id>"
+python -m qmlsurvey.runner --backend sv1 --task parity --epochs 1 --shots 100 `
+    --seed 0 --n-train-subset 2 --n-test-subset 2 --max-cost-usd 0.60 `
+    --experiment-group phase2-sv1-micro --out-dir results/phase2/sv1_micro
+```
+
+Stack: `pennylane==0.45.1`, `amazon-braket-pennylane-plugin==1.35.2`,
+`amazon-braket-sdk==1.127.3.post0`, Python 3.13. Device snapshot at submit:
+SV1 `ONLINE`, `is_available=True`, queue 0/0.
+
+What ran: `HybridModel(4, 2)` on parity, **2 train / 2 test inputs, 1 epoch**,
+shots=100, `broadcast_expand` path, Adam lr=0.05. One forward + one
+parameter-shift backward on the train pair, one no-grad eval pass over both
+pairs, one predictions pass over the test pair. Purpose: reconcile the task
+fan-out and the bill, not accuracy (2 inputs cannot say anything about
+accuracy; it was 0.5).
+
+### Predicted vs executed vs billed
+
+| quantity | predicted | observed |
+|---|---|---|
+| device tasks | 120 (`estimate_task_count(2, 2, 4, 2, 1)`) | **120** (`qml.Tracker`), 120 `COMPLETED` (Braket Tracker) |
+| shots | 12,000 | 12,000 |
+| actual execution duration | — | **1.56 s** total (13 ms / task) |
+| billed execution duration | 360 s (120 × 3 s minimum) | **360.0 s** |
+| cost | $0.4500 | **$0.4500** (Braket Tracker), ratio 1.00 |
+| wall time, submit → last result | — | 314 s (≈ 2.6 s / task, sequential) |
+| gradient | non-zero | `grad_l2 = 0.49` over the 54 model params |
+
+### Findings
+
+1. **The task-count model is exact on the cloud, not just locally.** Every
+   parameter-shift evaluation is its own Braket task. 120 predicted, 120
+   submitted, 120 completed, 120 billed.
+2. **Billing is the 3 s floor × task count, nothing else.** 1.56 s of real
+   compute was billed as 360 s. The $0.075/min rate never mattered; this
+   workload is 230× overhead. There is no batching of parameter-shift tasks by
+   the plugin or the service.
+3. **The June cost-model fix is confirmed.** `estimate_cost_usd` with the real
+   `n_tasks` matched the Braket Tracker to the cent. The pre-run estimate in
+   the confirm prompt is now a number you can plan a budget on.
+4. **The hybrid training loop closes against a cloud device.** Gradient
+   computed, optimizer stepped, parameters changed (`param_l2` recorded). This
+   is the first time the project has trained — rather than only inferred —
+   through `braket.aws.qubit`. Still inferred, not confirmed, for `dm1` and
+   for QPUs; the code path is identical but the devices are not.
+5. **Wall time is submit/poll bound.** 2.6 s per task at `poll_interval=1 s`,
+   strictly sequential. The plugin accepts `parallel=True`; untested here and
+   not needed for 120 tasks, but a Phase-3 forward pass over 52 test inputs
+   would otherwise take ~2–3 min of polling.
+6. **The S3 destination works as configured.** `QMLSURVEY_S3_BUCKET` →
+   `s3://amazon-braket-qmlsurvey-<account>/qmlsurvey/sv1/`. No bucket-name
+   rejection this time (finding #1 above still applies to the prefix).
+
+What this does *not* say: anything about accuracy, convergence, or whether
+SV1 training is useful. With the parity reference batch costing ≈ $45/epoch
+at this fan-out, SV1 training is a correctness check, not a workflow.

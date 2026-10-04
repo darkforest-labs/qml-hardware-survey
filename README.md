@@ -70,7 +70,10 @@ status, in-window flag and queue depth live.
 
 The $0.30 per-task fee dominates on QPUs. End-to-end training on hardware at
 this batch size is not something this project will buy; see `ROADMAP.md`
-Phase 4 for the re-scoped question.
+Phase 4 for the re-scoped question. The task model is not theoretical: a
+2-input, 1-epoch parity run on SV1 (2026-10-04) was predicted at 120 tasks /
+$0.45 and billed at 120 tasks / $0.45 (`docs/integration-notes/sv1.md`).
+Use `--n-train-subset` / `--n-test-subset` to make a paid run that small.
 
 ## Quickstart
 

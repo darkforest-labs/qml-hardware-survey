@@ -1,0 +1,193 @@
+{
+  "schema_version": 3,
+  "qmlsurvey_version": "0.1.0",
+  "timestamp_utc": "2026-10-04T02:04:51+00:00",
+  "backend": "sv1",
+  "backend_kind": "cloud_sim",
+  "task": "parity",
+  "n_qubits": 4,
+  "n_layers": 2,
+  "shots": 100,
+  "epochs": 1,
+  "learning_rate": 0.05,
+  "seed": 0,
+  "estimated_cost_usd": 0.44999999999999996,
+  "quantum": {
+    "final_train_acc": 0.5,
+    "final_test_acc": 0.5,
+    "best_test_acc": 0.5,
+    "final_loss": 0.7218690514564514,
+    "epochs": 1,
+    "wall_time_s": 314.25390170000173,
+    "queue_wait_s": 0.0,
+    "device_runtime_s": 0.0,
+    "epoch_trace": [
+      {
+        "epoch": 0,
+        "loss": 0.7218690514564514,
+        "train_acc": 0.5,
+        "test_acc": 0.5,
+        "grad_l2": 0.4917922653043289,
+        "param_l2": 1.5605011361572374,
+        "wall_s": 314.2538990999965
+      }
+    ]
+  },
+  "classical_baseline": {
+    "final_train_acc": 1.0,
+    "final_test_acc": 0.0,
+    "best_test_acc": 0.0,
+    "final_loss": 0.7544975280761719,
+    "epochs": 1,
+    "wall_time_s": 0.0010860999973374419,
+    "queue_wait_s": 0.0,
+    "device_runtime_s": 0.0,
+    "epoch_trace": [
+      {
+        "epoch": 0,
+        "loss": 0.7544975280761719,
+        "train_acc": 1.0,
+        "test_acc": 0.0,
+        "grad_l2": 0.6758684669838187,
+        "param_l2": 2.0778673754453916,
+        "wall_s": 0.0010844999997061677
+      }
+    ]
+  },
+  "quantum_total_params": 54,
+  "classical_total_params": 51,
+  "experiment_group": "phase2-sv1-micro",
+  "notes": "Phase-2 micro-training run: first paid gradient on a Braket device. 2 train / 2 test parity inputs, 1 epoch, broadcast_expand path; purpose is billed-vs-estimated reconciliation of the parameter-shift task fan-out, not accuracy.",
+  "environment": {
+    "python": "3.13.5",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "pennylane": "0.45.1",
+      "pennylane-lightning": "0.45.0",
+      "torch": "2.14.1",
+      "numpy": "2.5.3",
+      "scikit-learn": "1.9.1",
+      "amazon-braket-sdk": "1.127.3.post0",
+      "amazon-braket-pennylane-plugin": "1.35.2"
+    }
+  },
+  "git": {
+    "sha": "a515c9d901de4d6c76bc08374c04d01b88738143",
+    "dirty": true
+  },
+  "hardware": {
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 191 Stepping 2, GenuineIntel",
+    "cpu_count": 20,
+    "torch_cuda_available": false,
+    "torch_cuda_device": null
+  },
+  "circuit_fingerprint": {
+    "gate_counts": {
+      "RY": 4,
+      "Rot": 8,
+      "CNOT": 8
+    },
+    "depth": 11,
+    "num_gates": 20,
+    "num_wires": 4,
+    "n_circuit_params": 24,
+    "interface": "torch",
+    "diff_method": "best",
+    "broadcast_expanded": true
+  },
+  "init_params_sha256": {
+    "quantum": "f57b8dec4b4d0ad7bbcfb68f03f028bc7835bccdfae0ae3dd91a9bc14f7cbeeb",
+    "classical": "b5855e612f3df37ad26e962a1157faa97130e66cd3b835a2dbca2577ff53a60e"
+  },
+  "predictions": {
+    "quantum": {
+      "y_true": [
+        0,
+        1
+      ],
+      "y_pred": [
+        1,
+        1
+      ],
+      "logits": [
+        [
+          0.3309062421321869,
+          0.514134407043457
+        ],
+        [
+          0.45784813165664673,
+          0.5671892166137695
+        ]
+      ]
+    },
+    "classical": {
+      "y_true": [
+        0,
+        1
+      ],
+      "y_pred": [
+        1,
+        0
+      ],
+      "logits": [
+        [
+          -0.19248369336128235,
+          0.09180518239736557
+        ],
+        [
+          -0.07118281722068787,
+          -0.09788735955953598
+        ]
+      ]
+    }
+  },
+  "billing": {
+    "estimated_cost_usd": 0.44999999999999996,
+    "quantum_tasks_statistics": {
+      "arn:aws:braket:::device/quantum-simulator/amazon/sv1": {
+        "shots": 12000,
+        "tasks": {
+          "COMPLETED": 120
+        },
+        "execution_duration_s": 1.56,
+        "billed_execution_duration_s": 360.0
+      }
+    },
+    "simulator_tasks_cost_usd": 0.45,
+    "qpu_tasks_cost_usd": 0.0,
+    "billed_cost_usd": 0.45,
+    "billed_over_estimated": 1.0000000000000002
+  },
+  "estimated_tasks": 120,
+  "broadcast_expanded": true,
+  "n_train": 2,
+  "n_test": 2,
+  "device_snapshot": {
+    "arn": "arn:aws:braket:::device/quantum-simulator/amazon/sv1",
+    "captured_utc": "2026-10-04T01:59:27+00:00",
+    "status": "ONLINE",
+    "is_available": true,
+    "execution_windows_utc": [
+      {
+        "day": "Everyday",
+        "start": "00:00:00",
+        "end": "23:59:59"
+      }
+    ],
+    "listed_cost": {
+      "price": 0.075,
+      "unit": "minute"
+    },
+    "qubit_count": 34,
+    "queue_depth": {
+      "Normal": "0",
+      "Priority": "0"
+    }
+  },
+  "device_executions": {
+    "executions": 120,
+    "shots": 12000,
+    "batches": 5
+  }
+}

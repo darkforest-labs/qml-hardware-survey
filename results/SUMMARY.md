@@ -55,3 +55,11 @@ Backend: `default.qubit`, inits/cell=200, batch=32, init=uniform[-pi, pi], loss=
 | 8 | 3.033e-05 | 6.981e-06 | 5.541e-06 | 1.145e-05 |
 | 10 | 1.586e-05 | 1.536e-06 | 1.333e-06 | 1.727e-06 |
 | 12 | 9.488e-06 | 2.290e-06 | 5.078e-07 | 5.860e-07 |
+
+## Phase 2 — Braket cloud runs (paid)
+
+Estimated vs executed task counts and estimated vs billed cost, per run. `billed_s` is AWS's billed execution duration (3 s minimum per task on the on-demand simulators). `avail_at_submit` is the device's `is_available` flag when the run started.
+
+| timestamp_utc | backend | task | n_train/n_test | epochs | shots | est_tasks | executed | est_cost_usd | billed_usd | billed_s | q_test_acc | cls_test_acc | avail_at_submit |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-04T02:04:51+00:00 | sv1 | parity | 2/2 | 1 | 100 | 120 | 120 | 0.4500 | 0.4500 | 360.00 | 0.5000 | 0.0000 | True |
