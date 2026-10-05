@@ -21,8 +21,10 @@ depends on the device:
   ``qml.transforms.broadcast_expand``, which splits the batch into one tape per
   input *before* execution. Training then works, at the price of
   ``B x (1 + 2 x n_shift_params)`` device executions per training step. On
-  Braket each of those is a separately billed task; ``catalog.estimate_task_count``
-  mirrors this formula and was verified against ``qml.Tracker``.
+  SV1 each of those is a separately billed task (measured); QPUs may bundle up
+  to 100 per task via program sets (unverified, see ``catalog.estimate_cost_usd``).
+  ``catalog.estimate_task_count`` mirrors this formula and was verified against
+  ``qml.Tracker``.
 """
 from __future__ import annotations
 

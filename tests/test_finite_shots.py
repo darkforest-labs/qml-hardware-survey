@@ -81,7 +81,9 @@ def test_reference_run_cost_is_large_on_hardware():
     n_tr, n_te = meta["n_train"], meta["n_test"]
     n_tasks = estimate_task_count(n_tr, n_te, n_qubits=4, n_layers=2, epochs=1)
     assert n_tasks == n_tr * (1 + 2 * 28) + n_tr + n_te + n_te
-    # One epoch on the cheapest QPU at 200 shots is already thousands of dollars.
+    # One epoch on the cheapest QPU at 200 shots is thousands of dollars under the
+    # estimator's one-fee-per-circuit upper bound. Program sets may cut the fee
+    # part ~100x (unverified); the per-shot part alone is still > $1000.
     assert estimate_cost_usd("rigetti_cepheus", shots=200, n_tasks=n_tasks) > 1000.0
 
 

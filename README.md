@@ -55,8 +55,9 @@ status, in-window flag and queue depth live.
    with `shots`) PennyLane cannot differentiate a broadcasted tape
    (PennyLane #4462, still open at 0.45.1), so `HybridModel` wraps the QNode in
    `qml.transforms.broadcast_expand`, which splits the batch into one tape per
-   input before execution. On Braket that is one **billed task per input per
-   execution**, and parameter-shift multiplies it: a training step on `B`
+   input before execution. On the Braket cloud simulators that is one **billed
+   task per input per execution** (measured on SV1; QPUs may bundle, see the
+   caveat under "Cost reality"), and parameter-shift multiplies it: a training step on `B`
    inputs costs `B × (1 + 2 × P)` tasks with `P = n_qubits + 3·n_layers·n_qubits`
    (`P = 28` for the reference config). `catalog.estimate_task_count` is that
    formula and is verified against `qml.Tracker`; the runner records both the
@@ -64,15 +65,32 @@ status, in-window flag and queue depth live.
 
 ### Cost reality (reference config, 200 shots)
 
-| run | tasks | SV1 | Rigetti Cepheus | IonQ Forte-1 |
+| run | circuit executions | SV1 (billed model) | Rigetti Cepheus (upper bound) | IonQ Forte-1 (upper bound) |
 |---|---|---|---|---|
 | parity, 1 epoch, full batch (204 train / 52 test) | 11,936 | ≈ $45 | ≈ $4,600 | ≈ $194,000 |
 | parity, 30 epochs (roadmap reference) | 356,572 | ≈ $1,337 | ≈ $137,000 | — |
 | one gradient step, 1 input | 60 | $0.23 | ≈ $23 | ≈ $978 |
 
-The $0.30 per-task fee dominates on QPUs. End-to-end training on hardware at
-this batch size is not something this project will buy; see `ROADMAP.md`
-Phase 4 for the re-scoped question. The task model is not theoretical: a
+> **Caveat (2026-10-05): the QPU columns are an unverified upper bound.**
+> They assume one $0.30 task fee per circuit execution, which is what SV1
+> does and what was billed there. Braket *program sets* pack up to 100
+> circuits into one task with a single task fee. On 2026-10-04 the live device
+> properties showed every in-catalog QPU advertising the program-set action
+> (100 executables per task) while SV1 and DM1 do not, and the installed
+> `amazon-braket-pennylane-plugin` 1.35.2 bundles batches into program sets
+> automatically when the device supports them. If that holds at billing time,
+> the QPU cost is roughly `executions × shots × per-shot price` plus one task
+> fee per 100 circuits: about **$5.50** for one gradient step on one input on
+> Cepheus (not $23), about **$1,050** for one full-batch epoch (not $4,600),
+> and about **$4.70** for a forward pass over all 52 parity test inputs. IonQ
+> barely changes because its per-shot price dominates either way. None of the
+> program-set figures has been billed yet; `catalog.estimate_cost_usd` still
+> returns the upper bound, so the cost cap errs on the safe side. The first
+> QPU call (ROADMAP Phase 3) is the measurement that settles it.
+
+End-to-end training on hardware at this batch size is not something this
+project will buy under either cost model; see `ROADMAP.md` Phase 4 for the
+re-scoped question. On the cloud simulators the task model is not theoretical: a
 2-input, 1-epoch parity run on SV1 (2026-10-04) was predicted at 120 tasks /
 $0.45 and billed at 120 tasks / $0.45 (`docs/integration-notes/sv1.md`).
 Use `--n-train-subset` / `--n-test-subset` to make a paid run that small.
@@ -107,7 +125,8 @@ parameter-shift evaluation (see hard rule 4 and "Cost reality" below). Without
 the subset flags the same SV1 command estimates about $45 per epoch and aborts
 at the cap, which is the cap doing its job. The smallest possible QPU training
 run (1 train / 1 test input, 1 epoch, 200 shots on Rigetti Cepheus) is 60
-tasks, about $23. A forward-only QPU path (ROADMAP Phase 3) is not wired into
+circuit executions: at most about $23, and possibly about $6.60 if program
+sets bundle them (unverified, see the caveat under "Cost reality"). A forward-only QPU path (ROADMAP Phase 3) is not wired into
 the CLI yet.
 
 ## Reference configuration

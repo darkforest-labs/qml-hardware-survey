@@ -178,6 +178,14 @@ def estimate_cost_usd(
     - ``qpu``:       ``n_tasks x (cost_per_shot x shots + per_task_fee)``
     - ``cloud_sim``: ``n_tasks x max(3 s, runtime) x cost_per_minute``
 
+    The ``cloud_sim`` branch is billed-and-reconciled (two SV1 calls). The
+    ``qpu`` branch is an **unverified upper bound**: it charges one task fee per
+    circuit, but every in-catalog QPU advertises Braket *program sets* (up to
+    100 circuits per task, one task fee) and the PennyLane plugin >= 1.35 uses
+    them automatically, so the real task fee may be up to 100x lower. The
+    per-shot term is unaffected. Over-estimating keeps the cost cap safe; do not
+    lower this until a QPU call has been billed (see ROADMAP Phase 3).
+
     Callers issuing multi-task runs (any batch > 1, any gradient, any epoch
     count) MUST pass the real ``n_tasks``; the default of 1 only covers a single
     single-input task and will under-estimate otherwise. Never raise a cost cap
@@ -211,7 +219,10 @@ def estimate_task_count(
 
     plus a final predictions pass over the test set (``n_test``). Verified
     exactly against ``qml.Tracker`` on ``default.qubit`` and
-    ``braket.local.qubit`` at shots=200 (2026-10-03). Analytic local
+    ``braket.local.qubit`` at shots=200 (2026-10-03), and against the Braket
+    bill on SV1 (120 predicted, 120 billed, 2026-10-04). On QPUs this is the
+    number of *circuits*, which equals the number of billed tasks only if the
+    device does not bundle them into program sets (see ``estimate_cost_usd``). Analytic local
     simulators execute the broadcasted tape once per call instead, but they
     are free, so the over-count is harmless there.
     """
