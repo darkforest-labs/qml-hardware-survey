@@ -4,7 +4,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from qmlsurvey.backends import get_device
+from qmlsurvey import backends
+from qmlsurvey.backends import BackendUnavailable, DeviceError, get_device
 from qmlsurvey.baselines import MatchedMLP
 from qmlsurvey.catalog import CATALOG, estimate_cost_usd
 from qmlsurvey.model import HybridModel
@@ -69,3 +70,16 @@ def test_matched_mlp_param_count_close():
     m = MatchedMLP(4, 2, target_params=200)
     # Within a factor of 2 is good enough — it's a baseline, not a contract.
     assert 50 <= m.n_total_params <= 400
+
+
+@pytest.mark.parametrize("backend,shots", [("braket.local.qubit", 100), ("sv1", 100)])
+def test_missing_braket_plugin_raises_backend_unavailable(monkeypatch, backend, shots):
+    # PennyLane raises DeviceError for an unknown device name, which is what a
+    # missing amazon-braket-pennylane-plugin looks like. The name moved out of
+    # the top-level namespace in 0.43, so this guards the except clause itself.
+    def _no_such_device(*args, **kwargs):
+        raise DeviceError("Device braket.* does not exist.")
+
+    monkeypatch.setattr(backends.qml, "device", _no_such_device)
+    with pytest.raises(BackendUnavailable, match="plugin not installed"):
+        get_device(backend, wires=4, shots=shots)

@@ -11,6 +11,13 @@ import pennylane as qml
 
 from .catalog import CATALOG, BackendInfo
 
+# PennyLane 0.43 removed the top-level `qml.DeviceError`; it lives in
+# `pennylane.exceptions` from 0.42 on. Fall back for anything older.
+try:
+    from pennylane.exceptions import DeviceError
+except ImportError:  # pragma: no cover - pennylane < 0.42
+    DeviceError = qml.DeviceError
+
 
 class BackendUnavailable(RuntimeError):
     pass
@@ -33,7 +40,7 @@ def get_device(backend: str, wires: int, shots: int | None = None):
     if info.name == "braket.local.qubit":
         try:
             return qml.device("braket.local.qubit", wires=wires, shots=shots or 1000)
-        except qml.DeviceError as e:
+        except DeviceError as e:
             raise BackendUnavailable(
                 "amazon-braket-pennylane-plugin not installed. "
                 "Install with: pip install qmlsurvey[braket]"
@@ -59,7 +66,7 @@ def get_device(backend: str, wires: int, shots: int | None = None):
                 shots=shots,
                 **kwargs,
             )
-        except qml.DeviceError as e:
+        except DeviceError as e:
             raise BackendUnavailable(
                 "amazon-braket-pennylane-plugin not installed. "
                 "Install with: pip install qmlsurvey[braket]"
