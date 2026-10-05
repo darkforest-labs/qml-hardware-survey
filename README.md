@@ -44,7 +44,9 @@ status, in-window flag and queue depth live.
 
 ## Hard rules
 
-1. Every QPU run requires `--max-cost-usd N` and an interactive `confirm` prompt.
+1. Every cloud-sim and QPU run requires `--max-cost-usd N` (default 0, so a
+   missing flag aborts) and an interactive `confirm` prompt showing the task
+   count, estimated cost, and whether the device is inside its execution window.
 2. Every quantum run is paired with a same-parameter-count classical baseline in
    the same `RunRecord`. The table tells the truth.
 3. No "AI-powered" anything. Device picking is a 40-line weighted rubric.
@@ -86,12 +88,27 @@ pip install -e .[dev,braket]
 # Free local run
 python -m qmlsurvey.runner --backend default.qubit --task parity --epochs 30
 
-# Cloud sim (will prompt to confirm cost)
-python -m qmlsurvey.runner --backend sv1 --task moons --epochs 20 --max-cost-usd 1.00
+# Free finite-shot training on the Braket local simulator (same code path as
+# the cloud devices). A micro-batch keeps it to 120 circuit executions.
+python -m qmlsurvey.runner --backend braket.local.qubit --task parity --epochs 1 `
+    --shots 100 --n-train-subset 2 --n-test-subset 2
 
-# Real QPU (will prompt twice). Rigetti Cepheus is the cheapest gate QPU.
-python -m qmlsurvey.runner --backend rigetti_cepheus --task parity --epochs 1 --shots 200 --max-cost-usd 1.00
+# Pre-flight before anything paid: credentials, bucket, QPU windows and queue.
+$env:QMLSURVEY_S3_BUCKET = "amazon-braket-qmlsurvey-<account-id>"
+python scripts/doctor.py
+
+# Cloud sim, PAID: 120 tasks, $0.45 (prompts with the task count and cost).
+python -m qmlsurvey.runner --backend sv1 --task parity --epochs 1 --shots 100 `
+    --n-train-subset 2 --n-test-subset 2 --max-cost-usd 0.60
 ```
+
+The runner always *trains*, and training fans out into one billed task per
+parameter-shift evaluation (see hard rule 4 and "Cost reality" below). Without
+the subset flags the same SV1 command estimates about $45 per epoch and aborts
+at the cap, which is the cap doing its job. The smallest possible QPU training
+run (1 train / 1 test input, 1 epoch, 200 shots on Rigetti Cepheus) is 60
+tasks, about $23. A forward-only QPU path (ROADMAP Phase 3) is not wired into
+the CLI yet.
 
 ## Reference configuration
 

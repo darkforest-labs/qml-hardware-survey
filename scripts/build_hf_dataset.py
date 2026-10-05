@@ -45,6 +45,16 @@ def _flat_run_row(run_id: str, rec: dict[str, Any]) -> dict[str, Any]:
     git = rec.get("git", {}) or {}
     hw = rec.get("hardware", {}) or {}
     billing = rec.get("billing", {}) or {}
+    # v3: billing carries per-device Braket Tracker statistics; sum across devices.
+    stats = billing.get("quantum_tasks_statistics", {}) or {}
+    billed_tasks = sum(sum((st.get("tasks") or {}).values()) for st in stats.values()) or None
+    billed_ms = (
+        sum(float(st.get("billed_execution_duration_s", 0.0)) for st in stats.values()) * 1000.0
+        if stats
+        else billing.get("billed_duration_ms")
+    )
+    executions = rec.get("device_executions", {}) or {}
+    snap = rec.get("device_snapshot", {}) or {}
     return {
         "run_id": run_id,
         "schema_version": rec.get("schema_version"),
@@ -87,7 +97,15 @@ def _flat_run_row(run_id: str, rec: dict[str, Any]) -> dict[str, Any]:
         "hardware_cpu_count": hw.get("cpu_count"),
         "hardware_torch_cuda_available": hw.get("torch_cuda_available"),
         "billing_task_arn": billing.get("task_arn"),
-        "billing_billed_duration_ms": billing.get("billed_duration_ms"),
+        "billing_billed_duration_ms": billed_ms,
+        "billing_billed_tasks": billed_tasks,
+        "n_train": rec.get("n_train"),
+        "n_test": rec.get("n_test"),
+        "estimated_tasks": rec.get("estimated_tasks"),
+        "executed_tasks": executions.get("executions"),
+        "broadcast_expanded": rec.get("broadcast_expanded"),
+        "device_status_at_submit": snap.get("status"),
+        "device_available_at_submit": snap.get("is_available"),
         "billing_billed_cost_usd": billing.get("billed_cost_usd"),
         "billing_s3_result_uri": billing.get("s3_result_uri"),
         "notes": rec.get("notes", ""),

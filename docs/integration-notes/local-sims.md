@@ -116,6 +116,14 @@ on larger circuits; we have not measured the crossover point yet.
 
 ## `braket.local.qubit` — broadcasting / parameter-shift block
 
+> **Superseded 2026-10-03.** This section records the block as found in
+> April–June 2026. `HybridModel` now applies `qml.transforms.broadcast_expand`
+> on finite-shot devices, so training on `braket.local.qubit` works; see
+> "Refresh — 2026-10-03" at the top. Of the three options listed below, the
+> project took a variant of option 2 (per-input expansion done by a PennyLane
+> transform, applied to every finite-shot device rather than one backend).
+> Option 3 did not pan out: #4462 is still open at 0.45.1.
+
 All three `braket.local.qubit` runs failed with:
 
 > `NotImplementedError: Computing the gradient of broadcasted tapes with
@@ -142,6 +150,12 @@ bug. Options if we want `braket.local.qubit` coverage in later phases:
 For now the matrix is honest about the gap rather than working around it.
 
 ## Shot-noise sweep (option 1: inference-only on `braket.local.qubit`)
+
+> **Updated 2026-10-03.** The sweep was re-run on PennyLane 0.45.1. The four
+> finite-shot `default.qubit` cells that raised "probabilities do not sum to 1"
+> in June now complete (accuracy 1.0 in all 10 trials at every shot count), as
+> do all `braket.local.qubit` cells. `results/SUMMARY.md` has the current
+> table; the text below describes the June run.
 
 `scripts/run_phase1_shot_noise.py` trains the reference parity model once
 on `default.qubit` analytic, then evaluates the trained `state_dict` on the

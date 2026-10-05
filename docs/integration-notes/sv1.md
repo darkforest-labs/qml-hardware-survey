@@ -73,7 +73,9 @@ discipline, do **not** raise caps to compensate — fix the estimator.
    The Braket service-linked role only grants S3 access to `amazon-braket-*`
    buckets. `aws-setup.md` §3 has been corrected. (No task was created on the
    rejected attempt, so it cost nothing.)
-2. **Training via the current broadcasted path is blocked** — confirmed on
+2. *(Superseded — see "Second paid call — 2026-10-04" below: training now
+   works via `broadcast_expand` and was run on SV1.)*
+   **Training via the current broadcasted path is blocked** — confirmed on
    `braket.local.qubit` (PL #4462), inferred on SV1 (not paid-to-confirm; see
    the caveat above about SV1's native adjoint gradient). Forward/inference is
    the reachable path. Whether PennyLane ≥0.43 fixes #4462 could not be tested

@@ -51,9 +51,17 @@ Join everything on `run_id` (plus `model_kind` for the long splits).
 
 The upstream `RunRecord` schema is pinned via
 `qmlsurvey.RUNRECORD_SCHEMA_VERSION`. Records currently live at v1
-(Phase 0) and v2 (Phase 1 onward). v1 records contribute a row to `runs`
-but emit no rows to `epochs` / `predictions` — those fields didn't exist
-yet. The gap is intentional and visible.
+(Phase 0), v2 (Phase 1) and v3 (Phase 2 onward). v1 records contribute a
+row to `runs` but emit no rows to `epochs` / `predictions` — those fields
+didn't exist yet. The gap is intentional and visible.
+
+v3 is additive and fills these `runs` columns (null on older records):
+`n_train`, `n_test`, `estimated_tasks`, `executed_tasks`,
+`broadcast_expanded`, `billing_billed_tasks`, `billing_billed_duration_ms`,
+`billing_billed_cost_usd`, `device_status_at_submit`,
+`device_available_at_submit`. `estimated_tasks` vs `executed_tasks` and
+`estimated_cost_usd` vs `billing_billed_cost_usd` are the pairs to compare
+for any paid Braket run.
 
 ## What this dataset is not
 

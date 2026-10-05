@@ -7,16 +7,17 @@
 
 ## 0. What gets billed in this phase
 
-- **Cloud simulators** (`sv1`, `dm1`): \$0.075 / minute, billed in
-  whole-second granularity, 15 s minimum per task. There is **no** per-task
-  fee on cloud sims.
-- **Phase-2 cap**: \$1 cumulative across all calls.
-- The cost estimator in `qmlsurvey.catalog.estimate_cost_usd` defaults to
-  `estimated_runtime_minutes=0.05` (3 s). The first real billed run (`sv1.md`,
-  2026-06-20) confirmed it under-estimates: it models a *single* 3 s task and
-  ignores task count, but each broadcast input becomes its own task floored at
-  the 3 s minimum, so real cost ≈ `N_tasks × $0.00375`. Fix the estimator to
-  take an explicit task count; never raise the cap to compensate.
+- **Cloud simulators** (`sv1`, `dm1`): \$0.075 / minute with a **3 s minimum
+  per task** (observed on both paid SV1 calls; an earlier draft of this note
+  said 15 s, which was wrong). There is **no** per-task fee on cloud sims.
+- **Phase-2 cap**: \$1 cumulative across all calls. Spent so far: \$0.4575
+  (running tally in `sv1.md`).
+- Cost is `N_tasks × $0.00375` for these tiny circuits: the 3 s floor
+  dominates. `qmlsurvey.catalog.estimate_task_count` predicts `N_tasks` for a
+  training run and `estimate_cost_usd(..., n_tasks=...)` prices it; the runner
+  does both before the confirm prompt. Both paid calls reconciled to the cent
+  (`sv1.md`). Never raise the cap to make a run fit; shrink the run with
+  `--n-train-subset` / `--n-test-subset` instead.
 
 ## 1. AWS account + region
 
@@ -139,12 +140,19 @@ either the region is wrong, the IAM policy is missing
 
 Before invoking anything against `sv1` or `dm1`:
 
-1. `python scripts/doctor.py` returns `OK`.
+1. `python scripts/doctor.py` returns `OK`, with `QMLSURVEY_S3_BUCKET` set so
+   the S3 probe runs (the runner sends results to that bucket).
 2. `--max-cost-usd` is set on every call (Phase-2 contract: \$1 cap total).
-3. The cumulative spend so far in this phase is recorded somewhere I can
-   read (running tally in `sv1.md` once that note exists).
-4. The call uses `shots <= 1000` and a single epoch unless explicitly
-   noted otherwise.
+3. The cumulative spend so far in this phase is recorded in `sv1.md` and
+   leaves room for this call.
+4. The call uses `shots <= 1000`, a single epoch, and
+   `--n-train-subset` / `--n-test-subset` unless explicitly noted otherwise.
+   Dry-run the identical command on `braket.local.qubit` first and check the
+   printed task count matches the estimate.
+5. For QPUs: the doctor line for the device says `in-window`. Outside the
+   window the task queues (and the session blocks) until the window opens.
+6. Afterwards, confirm nothing is left running: `search_quantum_tasks` for
+   `CREATED` / `QUEUED` / `RUNNING` in each region should return zero.
 
 ## 8. Live preflight result — 2026-06-19
 
